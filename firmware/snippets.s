@@ -197,6 +197,7 @@ no_sr:
 		BIT IORA			; ack
 ; ** placeholder** for external interrupt
 		BRA via_exit
+no_ca1:
 	ASL
 	BPL no_ca2
 		BIT IORA			; ack... if not independent!
