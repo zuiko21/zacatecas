@@ -1,9 +1,14 @@
 ; Test code for Zacatecas SBC
 ; (c) 2026 Carlos J. Santisteban
 
+	SPEED	= 1000000		; 1 MHz as standard
 	t1ct	= (SPEED/250)-2	; 250 Hz interrupt at 1 MHz (or whatever) clock rate
 
-* = $C000					; standard 16K ROM
+#ifdef	POCKET
+	*		= $4000			; upper 16K RAM for testing
+#else
+	*		= $C000			; standard 16K ROM
+#endif
 
 ; some header would be nice here, for the sake of it...
 
@@ -63,13 +68,13 @@ LCD_command:
 	BRA send_LCD
 LCD_data:
 	SEC						; fastest data sending
-	SEI						; we must keep PA as output, but ISR expects it to be input all the time!
 send_LCD:
+	SEI						; we must keep PA as output, but ISR expects it to be input all the time!
 	DEC DDRA				; now $FF... if a bit risky
 	JSR send_byte			; no way for further optimisation
 	STZ DDRA				; PA goes back to input
 	CLI						; and return with interrupts on
-	; *** might need to add some safe delay here ***
+	; *** might need to add some safe delay here *** theoretically needs NONE at 1 MHz (takes more than 37 µs)
 	RTS
 
 send_byte:
@@ -92,6 +97,75 @@ send_nyb:
 	AND #LCD_DIS			; clear E bit
 	STA IORB
 	RTS
+
+; ******************************************
+; *** standard Interrupt Service Routine ***
+; ******************************************
+isr:						; assume PA all input
+	BIT IFR					; check interrupt source
+	BPL no_via				; not a VIA-sourced interrupt!
+	BVC no_t1				; non-periodic? otherwise...
+		BIT T1CL			; easiest way to acknowledge T1 interrupt EEEEK
+		INC jiffy			; update counter
+	BNE end_t1				; check carry and exit promptly
+		INC jiffy+1
+	BNE end_t1
+		INC jiffy+2
+	BNE end_t1
+		INC jiffy+2
+end_t1:
+	RTI
+no_via:						; VIA is the only interrupt source... this should be either BRK or spurious!
+	PHA
+	PHX
+	TSX						; let's dig into the stack
+	LDA $0103, X			; get saved P, below pushed A & X
+	AND #$10				; check B bit
+	BEQ no_brk				; it was a hardware interrupt, thus spurious
+		JMP panic			; otherwise BRK is treated as PANIC!
+no_brk:
+; might do something to signal spurious interrupts, like powering Emilio's LED
+	PLX
+	PLA
+	RTI						; otherwise restore status and continue
+no_t1:
+	PHA						; need to get the whole IFR
+	LDA IFR
+	ASL						; discard IRQ bit (assumed set) as well as T1 bit
+	ASL						; is it T2?
+;	BPL no_t2
+;		BIT T2CL			; ack
+; do T2 stuff **placeholder**
+;		BRA via_exit		; restore A and exit
+no_t2:
+	ASL
+;	BPL no_cb1
+;		BIT IORB			; ack
+; ** placeholder**
+;		BRA via_exit
+	ASL
+;	BPL no_cb2
+;		BIT IORB			; ack... if not independent!
+; ** placeholder**
+;		BRA via_exit
+	ASL
+	BPL no_sr
+		BIT VSR				; ack
+; ** placeholder** mainly for SS22 port
+		BRA via_exit
+	ASL
+	BPL no_ca1
+		BIT IORA			; ack
+; ** placeholder** for external interrupt
+		BRA via_exit
+	ASL
+	BPL no_ca2
+		BIT IORA			; ack... if not independent!
+; ** placeholder** for SS22 /STROBE
+;		BRA via_exit		; already there!
+via_exit:
+	PLA
+	RTI
 
 ; *********************
 ; *** PANIC routine ***
@@ -116,6 +190,7 @@ panic_loop:
 		EOR #%11100001		; toggle all relevant bits (will send SCLK pulses, though)
 		JMP panic_repeat	; forever
 
+#ifndef	POCKET
 ; ****************************
 ; *** standard ROM trailer ***
 ; ****************************
@@ -134,3 +209,4 @@ IRQ_handler:
 	.word	NMI_handler
 	.word	reset
 	.word	IRQ_handler
+#endif
