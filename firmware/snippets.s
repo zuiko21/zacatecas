@@ -9,9 +9,46 @@
 #else
 	*		= $C000			; standard 16K ROM
 #endif
+; ***********************
+; *** standard header ***
+; ***********************
+rom_start:
+; header ID
+	.byt	0				; [0]=NUL, first magic number
+#ifndef	POCKET
+	.asc	"dX"			; bootable ROM
+	.asc	"****"			; reserved
+#else
+	.asc	"pX"			; downloadable Pocket format
+	.word	rom_start		; load address
+	.word	reset			; execution address
+#endif
+	.byt	13				; [7]=NEWLINE, second magic number
+; filename
+	.asc	"Zacatecas boot firmware 1.0", 0	; C-string with filename @ [8], max 220 chars
+;	.asc	"(comment)"		; optional C-string with comment after filename, filename+comment up to 220 chars
+	.byt	0				; second terminator for optional comment, just in case
 
-; some header would be nice here, for the sake of it...
+; advance to end of header
+	.dsb	rom_start + $E6 - *, $FF
 
+; NEW library commit (user field 2)
+	.asc	"$$$$$$$$"
+; NEW main commit (user field 1)
+	.asc	"$$$$$$$$"
+; NEW coded version number
+	.word	$1001			; 1.0a1		%vvvvrrrrsshhbbbb, where revision = %hhrrrr, ss = %00 (alpha), %01 (beta), %10 (RC), %11 (final)
+
+; date & time in MS-DOS format at byte 248 ($F8)
+	.word	$4A00			; time, 17.16		1000 1-010 000-0 0000
+	.word	$5C98			; date, 2026/4/24	0101 110-0 100-1 1000
+; filesize in top 32 bits (@ $FC) now including header ** must be EVEN number of pages because of 512-byte sectors
+	.word	file_end-rom_start			; filesize (rom_end is actually $10000)
+	.word	0							; 64K space does not use upper 16 bits, [255]=NUL may be third magic number
+
+; *******************
+; *** actual code ***
+; *******************
 reset:
 	SEI						; usual 6502 stuff, just in case
 	CLD
@@ -165,6 +202,7 @@ no_t2:
 ;		BRA via_exit		; already there!
 via_exit:
 	PLA
+debug:						; *** NMI placeholder ***
 	RTI
 
 ; *********************
@@ -210,3 +248,4 @@ IRQ_handler:
 	.word	reset
 	.word	IRQ_handler
 #endif
+file_end:					; should be $10000 for ROM images, otherwise pocket file length
