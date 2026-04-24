@@ -179,16 +179,19 @@ no_t2:
 ;		BIT IORB			; ack
 ; ** placeholder**
 ;		BRA via_exit
+no_cb1:
 	ASL
 ;	BPL no_cb2
 ;		BIT IORB			; ack... if not independent!
 ; ** placeholder**
 ;		BRA via_exit
+no_cb2:
 	ASL
 	BPL no_sr
 		BIT VSR				; ack
 ; ** placeholder** mainly for SS22 port
 		BRA via_exit
+no_sr:
 	ASL
 	BPL no_ca1
 		BIT IORA			; ack
@@ -199,6 +202,7 @@ no_t2:
 		BIT IORA			; ack... if not independent!
 ; ** placeholder** for SS22 /STROBE
 ;		BRA via_exit		; already there!
+no_ca2:
 via_exit:
 	PLA
 debug:						; *** NMI placeholder ***
