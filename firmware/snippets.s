@@ -1,8 +1,7 @@
 ; Test code for Zacatecas SBC
 ; (c) 2026 Carlos J. Santisteban
 
-	SPEED	= 1000000		; 1 MHz as standard
-	t1ct	= (SPEED/250)-2	; 250 Hz interrupt at 1 MHz (or whatever) clock rate
+#include	"zacatecas.h"
 
 #ifdef	POCKET
 	*		= $4000			; upper 16K RAM for testing
