@@ -1,0 +1,4 @@
+(sym_lib_table
+  (version 7)
+  (lib (name "chihuahua-rescue")(type "KiCad")(uri "${KIPRJMOD}/chihuahua-rescue.kicad_sym")(options "")(descr ""))
+)
