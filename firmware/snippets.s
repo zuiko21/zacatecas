@@ -153,6 +153,7 @@ isr:						; assume PA all input
 	end_t1:
 ; should read keypad now
 		LDA IORA			; assumed to stay in read mode!
+		EOR #$FF			; EEEK
 		STA gamepad			; standard gamepad address
 		PLA					; restore this
 		RTI
