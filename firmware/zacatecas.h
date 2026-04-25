@@ -22,6 +22,10 @@
 #define		SD_MOSI		%00000010
 #define		SD_CLK		%00000001
 
+; Emilio's LED at PB6, active LOW
+#define		LED_ON		%10111111
+#define		LED_OFF		%01000000
+
 ; key pad at PA0...PA7, all active LOW
 #define		PAD_RT		%00000001
 #define		PAD_DN		%00000010
