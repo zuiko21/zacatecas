@@ -59,6 +59,7 @@
 	fw_irq	= $0200
 	fw_nmi	= $0202
 	ticks	= $0206
+	gamepad	= $0226
 	
 	t1ct	= (SPEED/250)-2	; 250 Hz interrupt at 1 MHz (or whatever) clock rate
 ; ****************************
