@@ -55,12 +55,12 @@ reset:
 	TXS
 ; Chihuahua/Zacatecas stuff
 	STZ DDRA				; PA is input most of the time
-	LDA #%11101111			; make sure LCD ENABLE is low ASAP, keep all LEDs off as well
+	LDA #LCD_DIS			; make sure LCD ENABLE is low ASAP, keep all LEDs off as well
 	STA IORB
 	STX DDRB				; PB is always output
 	LDY #$7F				; disable all interrupt sources for a while
 	STY IER
-	INY						; VIA should respond as all sources disabled
+	INY						; VIA should respond as all sources disabled ($80)
 	CPY IER					; let's check for VIA presence
 	BEQ continue
 		JMP panic			; otherwise this is not Chihuahua, or something is very wrong
@@ -112,17 +112,17 @@ send_LCD:
 	CLI						; and return with interrupts on
 	; *** might need to add some safe delay here *** theoretically needs NONE at 1 MHz (takes more than 37 µs)
 	RTS
-
+; actual sending of byte in A to LCD, C goes to RS as before
 send_byte:
 	PHP						; save C for later
 	PHA						; save low nybble
 	AND #$F0				; send high nybble first
 	JSR send_nyb
 	PLA						; retrieve full byte...
-	LSR
-	LSR
-	LSR
-	LSR						; ...just for the low nybble
+	ASL
+	ASL
+	ASL
+	ASL						; ...just for the low nybble EEEEK
 	PLP						; and back to RS in C
 send_nyb:
 	ADC #0					; set PA0 according to RS
@@ -141,16 +141,16 @@ isr:						; assume PA all input
 	BIT IFR					; check interrupt source
 	BPL no_via				; not a VIA-sourced interrupt!
 	BVC no_t1				; non-periodic? otherwise...
-		BIT T1CL			; easiest way to acknowledge T1 interrupt EEEEK
-		INC jiffy			; update counter
-	BNE end_t1				; check carry and exit promptly
-		INC jiffy+1
-	BNE end_t1
-		INC jiffy+2
-	BNE end_t1
-		INC jiffy+2
-end_t1:
-	RTI
+			BIT T1CL		; easiest way to acknowledge T1 interrupt EEEEK
+			INC ticks		; update counter
+		BNE end_t1			; check carry and exit promptly
+			INC ticks+1
+		BNE end_t1
+			INC ticks+2
+		BNE end_t1
+			INC ticks+2
+	end_t1:
+		RTI
 no_via:						; VIA is the only interrupt source... this should be either BRK or spurious!
 	PHA
 	PHX
@@ -218,18 +218,20 @@ panic:
 	STA DDRB				; retrieve outputs
 	LDA #%11100000			; make CB2 hi for clicking, rest as inputs
 	STA PCR
-	LDA #%00001110			; all LEDs on (including Durango's!) and keep LCD_E low for good measure
+	LDA #%00000110			; all LEDs on (including Durango's!) and keep LCD_E low for good measure
 panic_repeat:
-		STA IORB
+		STA IORB			; set Zacatecas bits
+		ROL:ROL				; this will set D7 at D1
 		STA $DFAF			; Durango interrupt-enable port!
 		STA $DFBF			; make Durango's buzzer click as well
+		ROR:ROR				; back to standard value
 		LDY #$7F			; faster-then-usual blink in Durango, about 3 Hz in Chihuahua/Zacatecas
 panic_loop:
 				DEX
 				BNE panic_loop
 			DEY
 			BNE panic_loop	; quite some delay, ~0.16s @ 1 MHz
-		EOR #%11100001		; toggle all relevant bits (will send SCLK pulses, though)
+		EOR #%11101000		; toggle all relevant bits
 		JMP panic_repeat	; forever
 
 #ifndef	POCKET
