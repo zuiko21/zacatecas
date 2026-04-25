@@ -36,11 +36,11 @@ rom_start:
 ; NEW main commit (user field 1)
 	.asc	"$$$$$$$$"
 ; NEW coded version number
-	.word	$1001			; 1.0a1		%vvvvrrrrsshhbbbb, where revision = %hhrrrr, ss = %00 (alpha), %01 (beta), %10 (RC), %11 (final)
+	.word	$1002			; 1.0a2		%vvvvrrrrsshhbbbb, where revision = %hhrrrr, ss = %00 (alpha), %01 (beta), %10 (RC), %11 (final)
 
 ; date & time in MS-DOS format at byte 248 ($F8)
-	.word	$4A00			; time, 17.16		1000 1-010 000-0 0000
-	.word	$5C98			; date, 2026/4/24	0101 110-0 100-1 1000
+	.word	$A280			; time, 20.20		1010 0-010 100-0 0000
+	.word	$5C99			; date, 2026/4/25	0101 110-0 100-1 1001
 ; filesize in top 32 bits (@ $FC) now including header ** must be EVEN number of pages because of 512-byte sectors
 	.word	file_end-rom_start			; filesize (rom_end is actually $10000)
 	.word	0							; 64K space does not use upper 16 bits, [255]=NUL may be third magic number
@@ -138,6 +138,7 @@ send_nyb:
 ; *** standard Interrupt Service Routine ***
 ; ******************************************
 isr:						; assume PA all input
+	PHA						; will need it, sooner or later
 	BIT IFR					; check interrupt source
 	BPL no_via				; not a VIA-sourced interrupt!
 	BVC no_t1				; non-periodic? otherwise...
@@ -150,9 +151,12 @@ isr:						; assume PA all input
 		BNE end_t1
 			INC ticks+2
 	end_t1:
+; should read keypad now
+		LDA IORA			; assumed to stay in read mode!
+		STA gamepad			; standard gamepad address
+		PLA					; restore this
 		RTI
 no_via:						; VIA is the only interrupt source... this should be either BRK or spurious!
-	PHA
 	PHX
 	TSX						; let's dig into the stack
 	LDA $0103, X			; get saved P, below pushed A & X
@@ -165,7 +169,6 @@ no_brk:
 	PLA
 	RTI						; otherwise restore status and continue
 no_t1:
-	PHA						; need to get the whole IFR
 	LDA IFR
 	ASL						; discard IRQ bit (assumed set) as well as T1 bit
 	ASL						; is it T2?
