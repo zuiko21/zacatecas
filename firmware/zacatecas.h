@@ -5,9 +5,32 @@
 #define		SPEED	1000000
 #endif
 
+; LCD at PB4...PB5, BL is active LOW
 #define		LCD_BLON	%11011111
+#define		LCD_BLOFF	%00100000
 #define		LCD_EN		%00010000
 #define		LCD_DIS		%11101111
+
+; LCD data at PA4...PA7, RS at PA0
+#define		LCD_RS		%00000001
+#define		LCD_DATA	%11110000
+
+; SD interface at PB0...PB3, CS is active LOW
+#define		SD_EN		%11110111
+#define		SD_DIS		%00001000
+#define		SD_MISO		%00000100
+#define		SD_MOSI		%00000010
+#define		SD_CLK		%00000001
+
+; key pad at PA0...PA7, all active LOW
+#define		PAD_RT		%00000001
+#define		PAD_DN		%00000010
+#define		PAD_LT		%00000100
+#define		PAD_UP		%00001000
+#define		PAD_SEL		%00010000
+#define		PAD_B		%00100000
+#define		PAD_ST		%01000000
+#define		PAD_A		%10000000
 
 ; *** VIA constants ***
 #define	IORB	0
@@ -31,7 +54,7 @@
 ; *** standard definitions ***
 	fw_irq	= $0200
 	fw_nmi	= $0202
-	jiffy	= $0206
+	ticks	= $0206
 	
 	t1ct	= (SPEED/250)-2	; 250 Hz interrupt at 1 MHz (or whatever) clock rate
 ; ****************************
