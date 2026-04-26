@@ -85,6 +85,7 @@ startup:
 	LDA #%11000000			; this far, only T1 interrupt is enabled
 	STA IER
 	CLI						; enable interrupts, and we're up and running!
+	JSR LCD_reset			; init screen
 ; ************************************************************************
 ; just enable LCD backlight...
 	LDA IORB
@@ -143,36 +144,38 @@ LCD_reset:
 	DEC DDRA				; all outputs, but risky...
 	LDX #%00110000			; FC=3
 	STX IORA
-	LDA IORB
+	JSR LCD_pulse			; just pulse E, no need for speed
+	LDY #5
+	JSR delay_ms			; more than 4.1 mS
+	JSR LCD_pulse			; another E
+	LDX #20					; times 5, at least 100 µs delay
+	JSR delay_20x
+	JSR LCD_pulse			; pulse E for a third time
+	LDX #7					; times 5 is 35 µs, with overhead is well beyond 37
+	JSR delay_20x
+	LDX #%00100000			; FC=2 for 4-bit mode
+	STX IORA
+	JSR LCD_pulse			; last command sent in 8-bit mode
+;	CLI						; further calls will reenable interrupts
+	LDA #%00101011			; 4-bit interface, 2 lines, 5x8 font
+	JSR LCD_command
+	LDA #%00001000			; display off
+	JSR LCD_command
+	LDA #%00000001			; display clear
+	JSR LCD_command
+	LDY #5
+	JSR delay_ms			; wait at least 5 mS, maybe 1.5?
+	LDA #%00000110			; entry mode set, increment, no shift
+	JMP LCD_command			; send and return
+
+; pulse E on LCD (affects A)
+	LDA IORB				; get previous status
 	ORA #LCD_EN				; set E bit
 	STA IORB
 	AND #LCD_DIS			; E off
 	STA IORB
-	LDY #5
-	JSR delay_ms			; more than 4.1 mS
-	ORA #LCD_EN				; set E bit again
-	STA IORB
-	AND #LCD_DIS			; E off
-	STA IORB
-	LDX #20					; times 5, at least 100 µs delay
-	JSR delay_20x
-	ORA #LCD_EN				; set E bit a third time
-	STA IORB
-	AND #LCD_DIS			; E off
-	STA IORB
-	LDX #7					; times 5 is 35 µs, with overhead is well beyond 37
-	JSR delay_20x
-	LDX #%0010000			; FC=2 for 4-bit mode
-	STX IORA
-	ORA #LCD_EN				; last command issued in 8-bit mode
-	STA IORB
-	AND #LCD_DIS			; E off
-	STA IORB
-;	CLI						; further calls will reenable interrupts
-	LDA #%00101011			; 4-bit interface, 2 lines, 5x8 font
-	JSR LCD_command
-	LDA #
-	
+	RTS
+
 ; wait for 5·X mS (destroys X, Y)
 delay_5x:
 	LDY #1					; trick for single iteration of external loop
