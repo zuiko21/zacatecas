@@ -159,7 +159,19 @@ LCD_reset:
 	ORA #LCD_EN				; set E bit a third time
 	STA IORB
 	AND #LCD_DIS			; E off
-; *****************continue here
+	STA IORB
+	LDX #7					; times 5 is 35 µs, with overhead is well beyond 37
+	JSR delay_20x
+	LDX #%0010000			; FC=2 for 4-bit mode
+	STX IORA
+	ORA #LCD_EN				; last command issued in 8-bit mode
+	STA IORB
+	AND #LCD_DIS			; E off
+	STA IORB
+;	CLI						; further calls will reenable interrupts
+	LDA #%00101011			; 4-bit interface, 2 lines, 5x8 font
+	JSR LCD_command
+	LDA #
 	
 ; wait for 5·X mS (destroys X, Y)
 delay_5x:
