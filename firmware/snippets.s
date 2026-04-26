@@ -149,10 +149,10 @@ LCD_reset:
 	JSR delay_ms			; more than 4.1 mS
 	JSR LCD_pulse			; another E
 	LDX #20					; times 5, at least 100 µs delay
-	JSR delay_20x
+	JSR delay_5x
 	JSR LCD_pulse			; pulse E for a third time
 	LDX #7					; times 5 is 35 µs, with overhead is well beyond 37
-	JSR delay_20x
+	JSR delay_5x
 	LDX #%00100000			; FC=2 for 4-bit mode
 	STX IORA
 	JSR LCD_pulse			; last command sent in 8-bit mode
@@ -169,6 +169,7 @@ LCD_reset:
 	JMP LCD_command			; send and return
 
 ; pulse E on LCD (affects A)
+LCD_pulse:
 	LDA IORB				; get previous status
 	ORA #LCD_EN				; set E bit
 	STA IORB
