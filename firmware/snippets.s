@@ -134,6 +134,47 @@ send_nyb:
 	STA IORB
 	RTS
 
+; *** initialise LCD ***
+; assume VIA is set, maybe inline it?
+LCD_reset:
+	LDY #15
+	JSR delay_ms			; 15 mS delay
+	SEI						; cannot share PA with buttons!
+	DEC DDRA				; all outputs, but risky...
+	LDX #%00110000			; FC=3
+	STX IORA
+	LDA IORB
+	ORA #LCD_EN				; set E bit
+	STA IORB
+	AND #LCD_DIS			; E off
+	STA IORB
+	LDY #5
+	JSR delay_ms			; more than 4.1 mS
+	ORA #LCD_EN				; set E bit again
+	STA IORB
+	AND #LCD_DIS			; E off
+	STA IORB
+	LDX #20					; times 5, at least 100 µs delay
+	JSR delay_20x
+	ORA #LCD_EN				; set E bit a third time
+	STA IORB
+	AND #LCD_DIS			; E off
+; *****************continue here
+	
+; wait for 5·X mS (destroys X, Y)
+delay_5x:
+	LDY #1					; trick for single iteration of external loop
+	BNE delay_loop			; could use BRA as well
+; wait for mS in Y (destroys X, Y)
+delay_ms:
+		LDX #200			; 200 x 5t ≈ 1 mS
+delay_loop:
+			DEX
+			BNE delay_loop
+		DEY					; another millisecond?
+		BNE delay_ms
+	RTS
+
 ; ******************************************
 ; *** standard Interrupt Service Routine ***
 ; ******************************************
