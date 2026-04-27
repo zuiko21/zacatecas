@@ -18,13 +18,13 @@ rom_start:
 	.asc	"dX"			; bootable ROM
 	.asc	"****"			; reserved
 #else
-	.asc	"pX"			; downloadable Pocket format
+	.asc	"pZ"			; downloadable Pocket format (for Zacatecas/Chihuahua)
 	.word	rom_start		; load address
 	.word	reset			; execution address
 #endif
 	.byt	13				; [7]=NEWLINE, second magic number
 ; filename
-	.asc	"Zacatecas boot firmware 1.0", 0	; C-string with filename @ [8], max 220 chars
+	.asc	"Zacatecas boot firmware 1.0a3", 0	; C-string with filename @ [8], max 220 chars
 ;	.asc	"(comment)"		; optional C-string with comment after filename, filename+comment up to 220 chars
 	.byt	0				; second terminator for optional comment, just in case
 
@@ -36,11 +36,11 @@ rom_start:
 ; NEW main commit (user field 1)
 	.asc	"$$$$$$$$"
 ; NEW coded version number
-	.word	$1002			; 1.0a2		%vvvvrrrrsshhbbbb, where revision = %hhrrrr, ss = %00 (alpha), %01 (beta), %10 (RC), %11 (final)
+	.word	$1003			; 1.0a3		%vvvvrrrrsshhbbbb, where revision = %hhrrrr, ss = %00 (alpha), %01 (beta), %10 (RC), %11 (final)
 
 ; date & time in MS-DOS format at byte 248 ($F8)
-	.word	$A280			; time, 20.20		1010 0-010 100-0 0000
-	.word	$5C99			; date, 2026/4/25	0101 110-0 100-1 1001
+	.word	$6C00			; time, 13.32		0110 1-100 000-0 0000
+	.word	$5C9B			; date, 2026/4/27	0101 110-0 100-1 1011
 ; filesize in top 32 bits (@ $FC) now including header ** must be EVEN number of pages because of 512-byte sectors
 	.word	file_end-rom_start			; filesize (rom_end is actually $10000)
 	.word	0							; 64K space does not use upper 16 bits, [255]=NUL may be third magic number
@@ -106,11 +106,12 @@ LCD_command:
 LCD_data:
 	SEC						; fastest data sending
 send_LCD:
+	PHP						; in case interrupts were masked
 	SEI						; we must keep PA as output, but ISR expects it to be input all the time!
 	DEC DDRA				; now $FF... if a bit risky
 	JSR send_byte			; no way for further optimisation
 	STZ DDRA				; PA goes back to input
-	CLI						; and return with interrupts on
+	PLP						; and return with interrupts on, if previously enabled!
 	; *** might need to add some safe delay here *** theoretically needs NONE at 1 MHz (takes more than 37 µs)
 	RTS
 ; actual sending of byte in A to LCD, C goes to RS as before
@@ -140,6 +141,7 @@ send_nyb:
 LCD_reset:
 	LDY #15
 	JSR delay_ms			; 15 mS delay
+	PHP						; proper way
 	SEI						; cannot share PA with buttons!
 	DEC DDRA				; all outputs, but risky...
 	LDX #%00110000			; FC=3
@@ -156,13 +158,13 @@ LCD_reset:
 	LDX #%00100000			; FC=2 for 4-bit mode
 	STX IORA
 	JSR LCD_pulse			; last command sent in 8-bit mode
-;	CLI						; further calls will reenable interrupts
 	LDA #%00101011			; 4-bit interface, 2 lines, 5x8 font
 	JSR LCD_command
 	LDA #%00001000			; display off
 	JSR LCD_command
 	LDA #%00000001			; display clear
 	JSR LCD_command
+	PLP						; this might reenable interrupts after basic init
 	LDY #5
 	JSR delay_ms			; wait at least 5 mS, maybe 1.5?
 	LDA #%00000110			; entry mode set, increment, no shift
