@@ -87,6 +87,11 @@ startup:
 	CLI						; enable interrupts, and we're up and running!
 	JSR LCD_reset			; init screen
 	JSR bong				; make startup sound
+	LDY #<splash
+	LDX #>splash			; pointer at za1h ($FA)
+	STY $FA
+	STX $FB					; *** TBD replace address with label
+	JSR print
 ; ************************************************************************
 ; just enable LCD backlight...
 	LDA IORB
@@ -99,7 +104,20 @@ lock:
 ; *** USEFUL ROUTINES ***
 ; ***********************
 
-; *** send byte in A to LCD ***
+; *** print string ***
+; ($FA) points to C-string, second half of zpar
+print:
+	LDY #0
+pr_loop:
+		LDA ($FA), Y
+	BEQ pr_exit
+		JSR LCD_data
+		INY
+		BNE pr_loop			; could use BRA as well, but this limits to 256 chars
+pr_exit:
+	RTS
+
+; *** send byte in A to LCD *** affects A
 ; *** C=1 for data, C=0 for commands *** note separate entry points
 LCD_command:
 	CLC						; commands will be less frequent, thus slower
@@ -333,6 +351,13 @@ panic_loop:
 			BNE panic_loop	; quite some delay, ~0.16s @ 1 MHz
 		EOR #%11101000		; toggle all relevant bits
 		JMP panic_repeat	; forever
+
+; ********************
+; *** DATA section ***
+; ********************
+splash:
+	.asc	" * Zacatecas *", 0
+
 
 #ifndef	POCKET
 ; ****************************
