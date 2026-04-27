@@ -86,6 +86,7 @@ startup:
 	STA IER
 	CLI						; enable interrupts, and we're up and running!
 	JSR LCD_reset			; init screen
+	JSR bong				; make startup sound
 ; ************************************************************************
 ; just enable LCD backlight...
 	LDA IORB
@@ -191,6 +192,42 @@ delay_loop:
 			BNE delay_loop
 		DEY					; another millisecond?
 		BNE delay_ms
+	RTS
+
+; *** bong sound ***
+bong:
+	LDA #%11101110			; set CB2 high in order to activate sound (PB7 from T1)
+	STA PCR
+	PHP
+	SEI						; just in case
+	LDA #%11010000			; T1 free run (PB7 on), SR free, no latch
+	STA ACR					; shifting starts now (SR not yet loaded)
+	LDY #<(t1ct/8)
+	LDA #>(t1ct/8)			; *** placeholder 1 kHz
+	STY T1CL
+	STA T1CH				; set T1 speed
+	STZ T2CL
+	STZ T2CH				; now pointing to T2CH, free run at max speed
+	LDA #$FF				; max volume PWM
+bvol:
+		STA VSR				; set PWM
+;		LDX #$C0			; in case a shorter envelope is desired
+bloop:
+				INY			; some delay, first iteration a bit shorter
+				BNE bloop
+			INX
+			BNE bloop
+		ASL					; one bit less
+		BCS bvol
+	LDA #%01000000			; T1 free run (but PB7 off EEEEK), no SR, no latch
+	STA ACR					; shifting stops
+	LDA #%11001110			; must set CB2 low!
+	STA PCR					; stop sound, no matter PB7 status
+	LDX #>t1ct				; restore standard T1 interrupt speed
+	LDY #<t1ct
+	STY T1CL
+	STX T1CH				; (re)start counting!
+	PLP						; restore interrupts if needed
 	RTS
 
 ; ******************************************
