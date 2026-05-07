@@ -36,11 +36,11 @@ rom_start:
 ; NEW main commit (user field 1)
 	.asc	"$$$$$$$$"
 ; NEW coded version number
-	.word	$1003			; 1.0a3		%vvvvrrrrsshhbbbb, where revision = %hhrrrr, ss = %00 (alpha), %01 (beta), %10 (RC), %11 (final)
+	.word	$1004			; 1.0a4		%vvvvrrrrsshhbbbb, where revision = %hhrrrr, ss = %00 (alpha), %01 (beta), %10 (RC), %11 (final)
 
 ; date & time in MS-DOS format at byte 248 ($F8)
-	.word	$6C00			; time, 13.32		0110 1-100 000-0 0000
-	.word	$5C9B			; date, 2026/4/27	0101 110-0 100-1 1011
+	.word	$6400			; time, 12.32		0110 0-100 000-0 0000
+	.word	$5CA7			; date, 2026/5/7	0101 110-0 101-0 0111
 ; filesize in top 32 bits (@ $FC) now including header ** must be EVEN number of pages because of 512-byte sectors
 	.word	file_end-rom_start			; filesize (rom_end is actually $10000)
 	.word	0							; 64K space does not use upper 16 bits, [255]=NUL may be third magic number
@@ -111,7 +111,7 @@ print:
 pr_loop:
 		LDA ($FA), Y
 	BEQ pr_exit
-		JSR LCD_data
+		JSR b_conio			; JSR LCD_data		; must call proper vectored CONIO
 		INY
 		BNE pr_loop			; could use BRA as well, but this limits to 256 chars
 pr_exit:
@@ -352,6 +352,32 @@ panic_loop:
 		EOR #%11101000		; toggle all relevant bits
 		JMP panic_repeat	; forever
 
+; **********************
+; *** BIOS functions *** preliminary
+; **********************
+; *** CONIO ***
+; display char in A, unless 0 > return key in A and C=0 if pressed, otherwise C=1 
+#ifdef	POCKET
+b_conio:
+#endif
+conio:
+	PHA
+	PHX
+	PHY						; save all registers, just in case *** check
+; should check if in DLE mode *** TO DO
+	TAY						; check parameter
+	BEQ c_in				; input if zero
+; placeholder for a much better CONIO *** TO DO
+		JSR LCD_data		; send character *** TO DO
+		BRA cio_exit		; restore and exit
+c_in:
+	SEC						; *** placeholder ***
+cio_exit:					; *** standard CONIO exit ***
+	PLY
+	PLX
+	PLA						; restore registers
+	RTS						; and exit
+
 ; ********************
 ; *** DATA section ***
 ; ********************
@@ -360,6 +386,7 @@ splash:
 
 
 #ifndef	POCKET
+#include	"bios_tab.s"
 ; ****************************
 ; *** standard ROM trailer ***
 ; ****************************
