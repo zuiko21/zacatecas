@@ -24,7 +24,7 @@ rom_start:
 #endif
 	.byt	13				; [7]=NEWLINE, second magic number
 ; filename
-	.asc	"Zacatecas boot firmware 1.0a5", 0	; C-string with filename @ [8], max 220 chars
+	.asc	"Zacatecas boot firmware 1.0a8a", 0	; C-string with filename @ [8], max 220 chars
 ;	.asc	"(comment)"		; optional C-string with comment after filename, filename+comment up to 220 chars
 	.byt	0				; second terminator for optional comment, just in case
 
@@ -36,10 +36,10 @@ rom_start:
 ; NEW main commit (user field 1)
 	.asc	"$$$$$$$$"
 ; NEW coded version number
-	.word	$1005			; 1.0a5		%vvvvrrrrsshhbbbb, where revision = %hhrrrr, ss = %00 (alpha), %01 (beta), %10 (RC), %11 (final)
+	.word	$1008			; 1.0a8		%vvvvrrrrsshhbbbb, where revision = %hhrrrr, ss = %00 (alpha), %01 (beta), %10 (RC), %11 (final)
 
 ; date & time in MS-DOS format at byte 248 ($F8)
-	.word	$8540			; time, 16.42		1000 0-101 010-0 0000
+	.word	$A320			; time, 20.25		1010 0-011 001-0 0000
 	.word	$5CFC			; date, 2026/7/28	0101 110-0 111-1 1100
 ; filesize in top 32 bits (@ $FC) now including header ** must be EVEN number of pages because of 512-byte sectors
 	.word	file_end-rom_start			; filesize (rom_end is actually $10000)
@@ -77,14 +77,17 @@ continue:
 	LDX #>isr
 	STY fw_irq				; set vector
 	STX fw_irq+1
-	LDY #<debug				; same with (placeholder) NMI
-	LDX #>debug
+	LDY #<panic				; same with (placeholder) NMI
+	LDX #>panic
 	STY fw_nmi
 	STX fw_nmi+1
 startup:
 	LDA #%11000000			; this far, only T1 interrupt is enabled
 	STA IER
 	CLI						; enable interrupts, and we're up and running!
+; BIOS init
+	STZ fw_cbin				; standard (non-DLE) CONIO mode
+; Startup message
 	JSR LCD_reset			; init screen
 	JSR bong				; make startup sound
 	LDY #<splash
@@ -179,7 +182,7 @@ LCD_reset:
 	JSR LCD_pulse			; last command sent in 8-bit mode
 	LDA #%00101011			; 4-bit interface, 2 lines, 5x8 font
 	JSR LCD_command
-	LDA #%00001000			; display off
+	LDA #%00001100			; display ON! eeeek
 	JSR LCD_command
 	LDA #%00000001			; display clear
 	JSR LCD_command
@@ -229,7 +232,7 @@ bong:
 	LDA #$FF				; max volume PWM
 bvol:
 		STA VSR				; set PWM
-;		LDX #$C0			; in case a shorter envelope is desired
+		LDX #$C0			; in case a shorter envelope is desired
 bloop:
 				INY			; some delay, first iteration a bit shorter
 				BNE bloop

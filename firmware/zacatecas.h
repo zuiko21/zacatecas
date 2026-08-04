@@ -59,8 +59,43 @@
 	fw_irq	= $0200
 	fw_nmi	= $0202
 	ticks	= $0206
+	fw_cbin	= $0210			; DLE mode
+	fw_ciop	= $021D			; cursor address into DDRAM (1 byte)
+	fw_scur	= $0222			; flag D7=cursor ON
 	gamepad	= $0226
-	VIA		= $BFF0			; EEEEEEEEEEEEEEEEEEEEEEEEEEK
-	
-	t1ct	= (SPEED/250)-2	; 250 Hz interrupt at 1 MHz (or whatever) clock rate
+
 ; ****************************
+; *** *** SD card BIOS *** ***
+; *** mount point  *** NEW for FAT32 support($2E8-$2F1)
+ds_cnt		= $2E8			; directory sector counter, unfortunately no longer in ZP ($2E8)
+cnt			= ds_cnt		; *** *** DEBUG USE *** ***
+sec_clus	= ds_cnt+1		; number of sectors per cluster $2E9
+dir_clus	= sec_clus+1	; first cluster of directory (needed for subtract) $2EA
+mnt_point	= dir_clus+4	; mount point (BIG endian like arg) $2EE..$2F1
+
+; *** interface vectors ***
+;;sd_dev_err	= $2F2			; error code for previous device, in case Fast SPI is not present
+;;sd_dev_id	= $2F3			; will add 47 to display ' ' for devCart, 0...3 for Fast SPI
+v_spi_tr	= $2F4
+v_cs_enable	= $2F6
+v_cs_disable= $2F8			; routine pointers just before tmp_siz (maybe fixed calls?)
+
+; *** sector buffer and header pointers ***
+tmp_siz		= $2FA			; $2FA-$2FB top 16 bits of temporary size for remaining free block (max. 16M)
+hd_cache	= tmp_siz+2		; $2FC-$2FF current header sector position (big-endian)
+buffer		= $300
+magic1		= buffer+0		; must contain zero
+magic2		= buffer+7		; must contain CR (13)
+magic3		= buffer+255	; must contain zero (assume filesize < 16 MiB)
+bootsig		= buffer+1		; must contain 'dX' for bootable ROM images, 'dA' for generic files, 'dL' for free space, 'pZ' for regular executables
+fname		= buffer+8
+ftime		= buffer+248	; time in MS-DOS format
+fdate		= buffer+250	; date in MS-DOS format
+fsize		= buffer+252	; file size INCLUDING 256-byte header
+; ****************************
+
+; ************************************
+; *** Zacatecas hardware addresses ***
+	VIA		= $BFF0			; EEEEEEEEEEEEEEEEEEEEEEEEEEK
+	t1ct	= (SPEED/250)-2	; 250 Hz interrupt at 1 MHz (or whatever) clock rate
+; ************************************
