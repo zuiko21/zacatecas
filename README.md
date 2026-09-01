@@ -13,3 +13,8 @@ Chihuahua-based 65C02 SBC with integrated peripherals (LCD text screen, microSD 
 - Independent LED output, plus software-controlled microSD card activity LED
 - _nanoLink_ input for card-less boot and development
 - _SS22_ synchronous serial port (developed from a [6502.org](https://6502.org/forum/viewtopic.php?p=19484) idea by Garth Wilson and Samuel Falvo)
+
+## Firmware
+
+See the generic [BIOS interface](firmware/bios.md)
+as well as the _specific_ [Low Level Library](firmware/lll.md) for Zacatecas.
