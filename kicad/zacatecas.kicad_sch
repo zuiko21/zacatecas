@@ -6,8 +6,8 @@
 	(paper "A4")
 	(title_block
 		(title "Zacatecas")
-		(date "2026-04-13")
-		(rev "v1")
+		(date "2026-08-08")
+		(rev "v1.1")
 		(company "@zuiko21")
 		(comment 1 "(c) 2026 Carlos J. Santisteban")
 	)
@@ -9981,10 +9981,22 @@
 		(uuid "a1528000-839b-4695-b9b7-ca322a55214c")
 	)
 	(junction
+		(at 73.66 77.47)
+		(diameter 0)
+		(color 0 0 0 0)
+		(uuid "a807f855-dbe8-4a28-89fa-439c7d22861b")
+	)
+	(junction
 		(at 168.91 189.23)
 		(diameter 0)
 		(color 0 0 0 0)
 		(uuid "a8325b6b-e3c0-4732-bdae-fd9854a2a965")
+	)
+	(junction
+		(at 33.655 68.58)
+		(diameter 0)
+		(color 0 0 0 0)
+		(uuid "a95c5a92-7bc3-4aae-8f9f-cf4a9e1a6991")
 	)
 	(junction
 		(at 161.925 137.16)
@@ -10572,7 +10584,7 @@
 		(uuid "5b4d7b4b-111c-4b6e-8776-3d081e707750")
 	)
 	(bus_entry
-		(at 46.355 140.97)
+		(at 46.355 128.27)
 		(size 2.54 2.54)
 		(stroke
 			(width 0)
@@ -11579,7 +11591,7 @@
 	)
 	(bus
 		(pts
-			(xy 46.355 125.73) (xy 46.355 130.81)
+			(xy 46.355 125.73) (xy 46.355 128.27)
 		)
 		(stroke
 			(width 0)
@@ -12609,6 +12621,16 @@
 	)
 	(wire
 		(pts
+			(xy 48.895 130.81) (xy 56.515 130.81)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "4e8d4dec-f973-4aed-a828-8a6bff9b4d19")
+	)
+	(wire
+		(pts
 			(xy 33.655 104.775) (xy 33.655 120.65)
 		)
 		(stroke
@@ -12866,6 +12888,16 @@
 			(type default)
 		)
 		(uuid "583470ed-1c04-4985-81ea-c106829cbb08")
+	)
+	(wire
+		(pts
+			(xy 73.66 68.58) (xy 73.66 77.47)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "589d6c9f-f03d-465a-9927-61bbce84c946")
 	)
 	(wire
 		(pts
@@ -13256,16 +13288,6 @@
 			(type default)
 		)
 		(uuid "6e33740f-79a2-4dc8-b04c-92b732b006f1")
-	)
-	(bus
-		(pts
-			(xy 46.355 135.89) (xy 46.355 140.97)
-		)
-		(stroke
-			(width 0)
-			(type default)
-		)
-		(uuid "6efe786d-d01d-4b55-850a-ba72bfcb378f")
 	)
 	(wire
 		(pts
@@ -13779,7 +13801,7 @@
 	)
 	(wire
 		(pts
-			(xy 33.655 67.31) (xy 33.655 74.93)
+			(xy 33.655 67.31) (xy 33.655 68.58)
 		)
 		(stroke
 			(width 0)
@@ -13886,6 +13908,16 @@
 			(type default)
 		)
 		(uuid "91166944-bc14-4831-8b5b-d54d2022df6d")
+	)
+	(wire
+		(pts
+			(xy 71.12 68.58) (xy 73.66 68.58)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "927ce63b-628f-455c-8099-e7947df96c4e")
 	)
 	(wire
 		(pts
@@ -14326,6 +14358,16 @@
 			(type default)
 		)
 		(uuid "b1d8fe9e-769f-4611-9a3d-10e94a406f5c")
+	)
+	(wire
+		(pts
+			(xy 33.655 68.58) (xy 63.5 68.58)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "b21e61fc-5b7d-47e9-8087-a9f7599c48a6")
 	)
 	(wire
 		(pts
@@ -15057,6 +15099,16 @@
 		)
 		(uuid "d7d931c2-0518-44a5-827c-a30775e5784e")
 	)
+	(bus
+		(pts
+			(xy 46.355 128.27) (xy 46.355 130.81)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "d915f1d2-a3e4-42fa-b58e-48cade14d2ad")
+	)
 	(wire
 		(pts
 			(xy 117.475 72.39) (xy 114.935 72.39)
@@ -15176,6 +15228,16 @@
 			(type default)
 		)
 		(uuid "e0e8a6f8-6849-4bd8-bbd1-27f99fc5dc25")
+	)
+	(wire
+		(pts
+			(xy 33.655 68.58) (xy 33.655 74.93)
+		)
+		(stroke
+			(width 0)
+			(type default)
+		)
+		(uuid "e12d6a36-7395-4f03-a68f-0445c22dc9c9")
 	)
 	(wire
 		(pts
@@ -16318,7 +16380,7 @@
 		(uuid "216d1d13-e25f-48c5-886b-84c7205becc2")
 	)
 	(label "CA1"
-		(at 56.515 130.81 180)
+		(at 41.91 143.51 180)
 		(effects
 			(font
 				(size 1.27 1.27)
@@ -17288,12 +17350,12 @@
 		(uuid "a97b4b44-92f8-4c75-9e88-3dfff85840bf")
 	)
 	(label "PB4"
-		(at 48.895 143.51 0)
+		(at 56.515 130.81 180)
 		(effects
 			(font
 				(size 1.27 1.27)
 			)
-			(justify left bottom)
+			(justify right bottom)
 		)
 		(uuid "aa8d007f-bda4-478c-86cb-638dd9c76dcb")
 	)
@@ -23819,7 +23881,7 @@
 	)
 	(symbol
 		(lib_id "Device:R")
-		(at 48.895 147.955 0)
+		(at 67.31 68.58 90)
 		(unit 1)
 		(exclude_from_sim no)
 		(in_bom yes)
@@ -23827,7 +23889,7 @@
 		(dnp no)
 		(uuid "7e263302-d2e2-45ca-b95e-0233faf828c9")
 		(property "Reference" "R6"
-			(at 50.673 146.7866 0)
+			(at 68.58 71.12 90)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -23836,7 +23898,7 @@
 			)
 		)
 		(property "Value" "3K3"
-			(at 48.895 147.955 90)
+			(at 67.31 68.58 90)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -23844,7 +23906,7 @@
 			)
 		)
 		(property "Footprint" "Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P2.54mm_Vertical"
-			(at 47.117 147.955 90)
+			(at 67.31 70.358 90)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -23853,7 +23915,7 @@
 			)
 		)
 		(property "Datasheet" "~"
-			(at 48.895 147.955 0)
+			(at 67.31 68.58 0)
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -23862,7 +23924,7 @@
 			)
 		)
 		(property "Description" ""
-			(at 48.895 147.955 0)
+			(at 67.31 68.58 0)
 			(effects
 				(font
 					(size 1.27 1.27)

@@ -24,7 +24,7 @@ rom_start:
 #endif
 	.byt	13				; [7]=NEWLINE, second magic number
 ; filename
-	.asc	"Zacatecas boot firmware 1.0a9a", 0	; C-string with filename @ [8], max 220 chars
+	.asc	"Zacatecas boot firmware 1.0a10", 0	; C-string with filename @ [8], max 220 chars
 ;	.asc	"(comment)"		; optional C-string with comment after filename, filename+comment up to 220 chars
 	.byt	0				; second terminator for optional comment, just in case
 
@@ -36,11 +36,11 @@ rom_start:
 ; NEW main commit (user field 1)
 	.asc	"$$$$$$$$"
 ; NEW coded version number
-	.word	$1009			; 1.0a9		%vvvvrrrrsshhbbbb, where revision = %hhrrrr, ss = %00 (alpha), %01 (beta), %10 (RC), %11 (final)
+	.word	$100A			; 1.0a10	%vvvvrrrrsshhbbbb, where revision = %hhrrrr, ss = %00 (alpha), %01 (beta), %10 (RC), %11 (final)
 
 ; date & time in MS-DOS format at byte 248 ($F8)
-	.word	$A000			; time, 20.00		1010 0-000 000-0 0000
-	.word	$5D33			; date, 2026/9/19	0101 110-1 001-1 0011
+	.word	$5F40			; time, 11.58		0101 1-111 010-0 0000
+	.word	$5D34			; date, 2026/9/20	0101 110-1 001-1 0100
 ; filesize in top 32 bits (@ $FC) now including header ** must be EVEN number of pages because of 512-byte sectors
 	.word	file_end-rom_start			; filesize (rom_end is actually $10000)
 	.word	0							; 64K space does not use upper 16 bits, [255]=NUL may be third magic number
@@ -112,15 +112,23 @@ startup:
 seq_loop:
 		LDA old				; use counter as mask
 		JSR en_str			; display 
-		LDA #100			; half-a-second delay
-		JSR delay_5x
-		ROL old				; update counter
+		LDY #250			; quarter-of-a-second delay eeeeek EEEEEEEEEEEEEEEEEEEK
+		JSR delay_ms
+		LSR old				; update counter eeeek
 		BCC seq_loop		; until 8-bits done
-	STZ mask
+	LDA #0					; eeeek
 	JSR en_str				; clear bottom row for good measure
 
 ; *** test > check pad input and display pressed keys on LCD bottom row ***
-
+	LDA gamepad				; standard address as set by ISR
+	STA old					; initial value
+k_wait:
+		LDA gamepad			; check current value
+		CMP old				; did change?
+		BEQ k_wait			; no, keep waiting
+	STA old					; yes, update recorded value
+	JSR en_str				; simply display current status...
+	BRA k_wait				; ...forever
 
 ; *** *** END OF TEST CODE *** ***
 lock:
@@ -224,7 +232,7 @@ LCD_pulse:
 	STA IORB
 	RTS
 
-; wait for 5·X mS (destroys X, Y)
+; wait for 5·X µS (destroys X, Y)
 delay_5x:
 	LDY #1					; trick for single iteration of external loop
 	BNE delay_loop			; could use BRA as well
