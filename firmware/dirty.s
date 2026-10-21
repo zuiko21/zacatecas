@@ -1,9 +1,9 @@
-; nanoBoot v2 (w/ support for Durango Cartridge & Pocket format, plus Chihuahua·D)
-; (c) 2024 Carlos J. Santisteban
-; last modified 20241005-1322
+; nanoBoot v2 (Zacatecas version, also Chihuahua suitable with an LCD hat)
+; (c) 2024-2026 Carlos J. Santisteban
+; last modified 20261021-1234
 
 ; add -DALONE for standalone version (otherwise module after multiboot.s)
-#echo	Chihuahua-D compatible (with feedback even for data)
+#echo	Zacatecas/Chihuahua-D compatible (with feedback on LCD)
 
 #ifdef ALONE
 	*		= $E000			; skip I/O, just in case
@@ -31,10 +31,10 @@ rom_start:
 	.asc	"****"			; reserved
 	.byt	13				; [7]=NEWLINE, second magic number
 ; filename
-	.asc	"nanoBoot v2.1.2"	; C-string with filename @ [8], max 220 chars
+	.asc	"nanoBoot v2.2"	; C-string with filename @ [8], max 220 chars
 ; note terminator below
 ; optional C-string with comment after filename, filename+comment up to 220 chars
-	.asc	0, 0
+	.asc	"Zacatecas version", 0, 0
 
 ; advance to end of header *** NEW format
 	.dsb	rom_start + $E6 - *, $FF
@@ -44,10 +44,10 @@ rom_start:
 ; NEW main commit (user field 1)
 	.asc	"$$$$$$$$"
 ; NEW coded version number
-	.word	$21C2			; 2.1f2		%vvvvrrrrsshhbbbb, where revision = %hhrrrr, ss = %00 (alpha), %01 (beta), %10 (RC), %11 (final)
+	.word	$2201			; 2.2a1		%vvvvrrrrsshhbbbb, where revision = %hhrrrr, ss = %00 (alpha), %01 (beta), %10 (RC), %11 (final)
 ; date & time in MS-DOS format at byte 248 ($F8)
-	.word	$4E00			; time, 09.48		%0100 1-110 000-0 0000
-	.word	$5945			; date, 2024/10/5	%0101 100-1 010-0 0101
+	.word	$6480			; time, 12.36		%0110 0-100 100-0 0000
+	.word	$5D55			; date, 2026/10/21	%0101 110-1 010-1 0101
 ; filesize in top 32 bits (@ $FC) now including header ** must be EVEN number of pages because of 512-byte sectors
 	.word	$10000-rom_start			; filesize (rom_end is actually $10000)
 	.word	0							; 64K space does not use upper 16 bits, [255]=NUL may be third magic number
@@ -69,6 +69,7 @@ nb_start:
 	CLD						; continue standard 6502 init
 	LDX #$FF
 	TXS
+/* Durango init makes no sense 
 	LDA #%10110000			; *** Durango·X init, HIRES mode ***
 	STA IO8attr				; eeeek
 ; clear screen
@@ -84,8 +85,10 @@ nc_loop:
 			BNE nc_loop		; full page
 		INX
 		BPL nc_page			; next page until end of RAM
+		*/
 ; * display nanoBoot banner *
 s_ban:
+/* no Durango code
 	LDX #3					; max offset
 sb_loop:
 		LDA banner, X
@@ -99,9 +102,9 @@ sb_loop:
 		LDA banner+16, X
 		STA $778A, X
 		DEX
-		BPL sb_loop
-	LDA #$FF				; ** Chihuahua specifics **
-	STA D_DDRB				; set PB all outputs for feedback
+		BPL sb_loop */
+	LDA #$FF				; ** Chihuahua specifics, now for Zacatecas **
+	STA D_DDRB				; set PB all outputs for feedback ----------CHECK
 	STZ D_IORB				; all LEDs off
 	LSR						; now A is $7F
 	STA D_IER				; disable all interrupt sources
