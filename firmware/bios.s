@@ -1,8 +1,8 @@
 ; ******************************
-; *** miniBIOS for Zacatecas ***
+; *** miniBIOS for Zacatecas *** v0.1a2
 ; ******************************
 ; (c) 2026 Carlos J. Santisteban
-; last modified 20261117-0948
+; last modified 20261117-1050
 
 ; *** CONIO ***
 ; display char in A, unless 0 > return key in A and C=0 if pressed, otherwise C=1 
@@ -66,19 +66,21 @@ no_home:
 			LDA #>(t1ct/8)	; will sound at 1 kHz
 			STY T1CL
 			STA T1CH		; set T1 speed
-			LDA #%11101110	; set CB2 high to enable sound (and keep CA2 high for some reason)
-			STA PCR
-			LDA #%11000000	; T1 free run (PB7 on), SR disabled, no latch
-			STA ACR			; shifting starts now (SR not yet loaded)
+			LDA #%11100000	; this will set CB2 high (enable sound)
+			TSB PCR
+			LDA ACR			; previous state of ACR
+			PHA				; keep it just in case
+			ORA #%11000000	; T1 continuous interrupts, PB7 square wave
+			STA ACR			; start buzzing
 			LDA ticks		; get jiffy count (LSB)
 			DEC				; wait for (almost) one wrap...
 bel_wait:
 				CMP ticks	; ...until it arrives
 				BNE bel_wait
-			LDA #%01000000	; T1 free run (but PB7 off EEEEK), no SR, no latch
-			STA ACR			; shifting stops
-			LDA #%11001110	; must set CB2 low!
-			STA PCR			; stop sound, no matter PB7 status
+			PLA
+			STA ACR			; restore ACR
+			LDA #%00100000	; was %111xxxxx, TRB will turn into %110xxxxx
+			TRB PCR			; CB2 low stops sound, no matter PB7 status
 			LDX #>t1ct		; restore standard T1 interrupt speed
 			LDY #<t1ct
 			STY T1CL
