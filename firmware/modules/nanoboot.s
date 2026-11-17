@@ -1,6 +1,6 @@
 ; nanoBoot v2 (Zacatecas version, also Chihuahua suitable with an LCD hat)
 ; (c) 2024-2026 Carlos J. Santisteban
-; last modified 20261114-2147
+; last modified 20261117-0953
 
 ; add -DALONE for standalone version (otherwise module into boot.s, after sdboot.s/romboot.s)
 
@@ -22,7 +22,7 @@ rom_start:
 	.asc	"****"			; reserved
 	.byt	13				; [7]=NEWLINE, second magic number
 ; filename
-	.asc	"nanoBoot v2.2b1"	; C-string with filename @ [8], max 220 chars
+	.asc	"nanoBoot v2.2b2"	; C-string with filename @ [8], max 220 chars
 ; note terminator below
 ; optional C-string with comment after filename, filename+comment up to 220 chars
 	.asc	"Zacatecas version", 0, 0
@@ -35,10 +35,10 @@ rom_start:
 ; NEW main commit (user field 1)
 	.asc	"$$$$$$$$"
 ; NEW coded version number
-	.word	$2241			; 2.2b1		%vvvvrrrrsshhbbbb, where revision = %hhrrrr, ss = %00 (alpha), %01 (beta), %10 (RC), %11 (final)
+	.word	$2242			; 2.2b2		%vvvvrrrrsshhbbbb, where revision = %hhrrrr, ss = %00 (alpha), %01 (beta), %10 (RC), %11 (final)
 ; date & time in MS-DOS format at byte 248 ($F8)
-	.word	$5EC0			; time, 11.54		%0101 1-110 110-0 0000
-	.word	$5D6E			; date, 2026/11/14	%0101 110-1 011-0 1110
+	.word	$4EC0			; time, 9.54		%0100 1-110 110-0 0000
+	.word	$5D71			; date, 2026/11/17	%0101 110-1 011-1 0001
 ; filesize in top 32 bits (@ $FC) now including header ** must be EVEN number of pages because of 512-byte sectors
 	.word	$10000-rom_start			; filesize (rom_end is actually $10000)
 	.word	0							; 64K space does not use upper 16 bits, [255]=NUL may be third magic number
@@ -54,9 +54,6 @@ rom_start:
 ; *******************
 nb_start:
 .(
-
-#include "modules/romboot.s"
-
 	SEI						; just in case!
 #ifdef	ALONE
 	CLD
@@ -91,16 +88,26 @@ continue:
 	LDX #>STDNMI
 	STY fw_nmi
 	STX fw_nmi+1
-startup:
 	LDA #%11000000			; this far, only T1 interrupt is enabled
 	STA IER
+	STZ fw_cbin				; standard (non-DLE) CONIO mode
+	JSR l_lrst				; init screen (LLL call)
+; as usual, holding LEFT during startup disables LCD backlight
+	LDA gamepad				; check keys
+	BIT #PAD_LT				; press LEFT to turn Backlight OFF
+	BNE bl_off
+		TAY					; preserve gamepad status, saving 1 byte
+		LDA #LCD_BLOFF		; clear LCD_BL to turn *on* the light!
+		TRB IORB
+		TYA					; retrieve A
+bl_off:
 #endif
 ; display ready message thru CONIO
 	LDA #LED_EMI			; keep Emilio's LED turned on
 	TRB IORB
 nb_rpt:
 ; * display nanoBoot banner *
-	LDX #banner-msg			; reset offset
+	LDX #nb_banner-nb_msg			; reset offset
 	JSR sb_loop				; and print selected message
 
 ; *** all inited, get ready for reception ***
@@ -192,13 +199,13 @@ nb_error:
 	STY fw_nmi				; (3+3) redirect handler (might become simply STZ fw_nmi if aligned!)
 	STX fw_nmi+1
 ; draw some feedback
-	LDX #error-msg			; preset offset
+	LDX #err_msg-nb_msg			; preset offset
 	JSR sb_loop				; and print selected message
 	JMP panic				; blink like CRAZY!
 ; **********************************************************************
 ; ROM images are NOT accepted
 is_cart:
-		LDX #cart-msg		; message index
+		LDX #nb_cart-nb_msg		; message index
 		JSR sb_loop			; print it
 		BRA nb_error		; PANIC (no longer besides nb_error)
 nb_cont:
@@ -213,11 +220,12 @@ nb_nw:
 			BNE nb_rcv		; (3/2)
 ; *** transfer ended ***
 	LDY #<nb_rti
-	LDA #>nb_rti			; (2+2) set null interrupt vectors, just in case
+	LDA #>nb_rti			; (2+2) set null NMI vector, just in case
 	STY fw_nmi
+	STA fw_nmi+1			; (4+4)
+	LDA #<
 	STY fw_irq
-	STA fw_nmi+1
-	STA fw_irq+1			; (3+3+3+3) all clear
+	STA fw_irq+1			; () all clear
 	LDA #%11000000			; (2+4) enable T1
 	STA IER
 ;	BNE nb_exec				; (3) try executing, no need for BRA
@@ -232,7 +240,7 @@ not_bin:
 		BEQ is_cart			; (2/3)
 	CMP #$4D				; (2) generic data?
 	BNE not_data			; (3/2)
-	LDX #cart-msg			; (2) preset offset
+	LDX #nb_cart-nb_msg			; (2) preset offset
 	JSR sb_loop				; and print selected message
 	JMP nb_rdy				; (3) back to receiving mode
 not_data:
@@ -256,7 +264,7 @@ nb_bad:
 ; ************************
 ; print message from selected offset
 sb_loop:
-		LDY msg, X			; get char
+		LDY nb_msg, X			; get char
 	BEQ sb_exit				; until end
 		JSR b_conio			; print it (BIOS call keeps all registers)
 		INX					; next char
@@ -298,12 +306,12 @@ nb_irq:
 	RTI						; (6) whole routine takes only 15 clocks, plus acknowledge (total 22)
 
 ; * feedback messages for CONIO *
-msg:						; base address
-banner:
+nb_msg:						; base address
+nb_banner:
 	.asc	21, "nanoBoot? ", 0			; standard banner
-cart:
+nb_cart:
 	.asc	" * CARTRIDGE! *", 0		; ROM images NOT accepted
-error:
+err_msg:
 	.asc	"FAIL!", 0					; error message
 
 nb_code_end:
