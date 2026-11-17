@@ -2,7 +2,7 @@
 ; *** miniBIOS for Zacatecas ***
 ; ******************************
 ; (c) 2026 Carlos J. Santisteban
-; last modified 20261114-2223
+; last modified 20261117-0948
 
 ; *** CONIO ***
 ; display char in A, unless 0 > return key in A and C=0 if pressed, otherwise C=1 
@@ -57,6 +57,35 @@ no_cwl:
 			LDA #%10000000	; command and null position (Set DDRAM address)
 			BRA set_cur		; and issue new position
 no_home:
+		CPY #7				; is it bell?
+		BNE no_bell
+; short beep, set IRQ frequency to 2 kHz and wait 255 ticks (almost 1/8 second)
+			PHP				; just in case...
+			CLI				; interrupts MUST be on!
+			LDY #<(t1ct/8)
+			LDA #>(t1ct/8)	; will sound at 1 kHz
+			STY T1CL
+			STA T1CH		; set T1 speed
+			LDA #%11101110	; set CB2 high to enable sound (and keep CA2 high for some reason)
+			STA PCR
+			LDA #%11000000	; T1 free run (PB7 on), SR disabled, no latch
+			STA ACR			; shifting starts now (SR not yet loaded)
+			LDA ticks		; get jiffy count (LSB)
+			DEC				; wait for (almost) one wrap...
+bel_wait:
+				CMP ticks	; ...until it arrives
+				BNE bel_wait
+			LDA #%01000000	; T1 free run (but PB7 off EEEEK), no SR, no latch
+			STA ACR			; shifting stops
+			LDA #%11001110	; must set CB2 low!
+			STA PCR			; stop sound, no matter PB7 status
+			LDX #>t1ct		; restore standard T1 interrupt speed
+			LDY #<t1ct
+			STY T1CL
+			STX T1CH		; (re)start counting!
+			PLP				; restore previous interrupt status
+			BRA cio_exit
+no_bell:
 ; placeholder for a much better CONIO *** TO DO
 		JSR l_ldat			; send character
 		INC fw_ciop			; update position
