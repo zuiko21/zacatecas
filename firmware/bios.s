@@ -100,15 +100,28 @@ cio_exit:					; *** standard CONIO exit ***
 	PLA						; restore registers
 	RTS						; and exit
 
+; ****************
+; *** READ_PAD *** TBD *** TBD *** TBD
+; ****************
 rpad:
+	SEC						; placeholder
+	RTS
 
+; ***************
+; *** SEL_DEV *** TBD *** TBD *** TBD
+; ***************
 sel_dev:
+	SEC						; placeholder
+	RTS
 
+; ****************
 ; *** READ_BLK ***
+; ****************
 ; read single sector specified in arg, into buffer pointed by ptr
-; ptr MUST be even, NOT starting at $DF00 and certainly (two) page-aligned
+; ptr MUST be even, NOT starting at $DF00 and certainly (two) page-aligned (really?)
+; doesn't care about selected device this far
 ssec_rd:
-/*; set token to none
+; set token to none
 	LDA #$FF
 	STA token				; *token = 0xFF;
 	JSR cs_enable			; assert chip select
@@ -174,11 +187,18 @@ set_tk:
 no_res:
 	JSR cs_disable			; deassert chip select
 	LDA res					; return res1;
+;	BRA rb_ok
+; *** should check some errors...
+rb_ok:
+	CLC						; *** placeholder ***
 	RTS
-*/
+
+; *********************************
 ; *** save current sector to SD ***
+; *********************************
+; write single sector specified in arg, from buffer pointed by ptr
+; doesn't care about selected device this far
 flush_sd:
-/*; * intended to write from $0400 *
 	LDA #>buffer
 ;	LDY #<buffer			; expected to be page-aligned
 	STA ptr+1
@@ -272,13 +292,20 @@ no_wres:
 	JSR cs_disable			; deassert chip select
 	LDA res
 ; * restore buffer access for convenience * SHOULD I DO THIS?
-	DEC ptr+1				; wrap buffer pointer (assume page aligned) eeeeek
-	DEC ptr+1				; eeeeek
+;	DEC ptr+1				; wrap buffer pointer (assume page aligned) eeeeek
+;	DEC ptr+1				; eeeeek
+;	BRA wb_ok
+; *** should check some errors
+wb_ok:
+	CLC						; *** placeholder ***
 	RTS
-*/
-; *** SD_powerUpSeq is inlined here ***
+
+; ***********************************************
+; *** initialise SD card interface for access ***
+; ***********************************************
+; doesn't care about selected device this far
 sd_init:
-/*	JSR cs_disable			; EEEEEEEEEEEEEEEKKKKKKKKKKKKK
+	JSR cs_disable			; EEEEEEEEEEEEEEEKKKKKKKKKKKKK
 	LDX #200				; ** may substitute SD logo load for this delay **
 sdpu_dl:
 		DEX
@@ -315,10 +342,10 @@ set_idle:
 	BEQ is_idle				; while((res[0] = SD_goIdleState()) != 0x01)
 		DEX					; cmdAttempts++;
 		BNE set_idle
+	LDY #IDLE_ERR
 	JMP sd_fail				; if(cmdAttempts > 10)	return SD_ERROR;
 is_idle:
-	LDA #'.'				; step 0 (IDLE) passed
-	JSR l_ldat				; direct dot print
+; no lateral effects here!
 ; ** SD_sendIfCond is inlined here **
 	JSR cs_enable			; assert chip select
 ; send CMD8
@@ -338,7 +365,6 @@ is_idle:
 
 	STZ sd_ver				; ### default (0) is modern SD card ###
 	LDA res
-	LDX #SDIF_ERR			; moved here
 	CMP #1					; check valid response
 	BEQ sdic_ok
 ; ### if error, might be 1.x card, notify and skip to CMD58 or ACMD41 ###
@@ -347,10 +373,10 @@ is_idle:
 		JSR disp_code
 		BRA not_cmd8
 sdptec:
+		LDY #SDIF_ERR
 		JMP sd_fail			; if(res[0] != 0x01) return SD_ERROR;
 sdic_ok:
-	LDA #'.'				; step 1 (SDIF) passed
-	JSR l_ldat				; direct dot print
+; no lateral effects here!
 ; check pattern echo
 	LDX #ECHO_ERR			; *** ERROR 2 in red ***
 	LDA res+4
@@ -408,10 +434,10 @@ d10m:
 			BNE d10m		; delayMicroseconds(10000);
 		DEX					; cmdAttempts++;
 		BNE sd_ia
+	LDY #INIT_ERR
 	JMP sd_fail				; if(cmdAttempts > 100) return SD_ERROR;
 apc_rdy:
-	LDA #'.'				; step 3 (INIT) passed
-	JSR l_ldat				; direct dot print
+; no lateral effects here!
 ; ### old SD cards are always SC ###
 	LDA sd_ver
 		BNE sd_sc
@@ -431,6 +457,7 @@ apc_rdy:
 	JSR cs_disable			; deassert chip select
 
 ; check whether card is ready
+	LDY #READY_ERR
 	BIT res+1				; eeeeeeeeek ### will check CCS as well ###
 	BMI card_rdy			; eeeeeeeeek
 		JMP sd_fail			; if(!(res[1] & 0x80)) return SD_ERROR;
@@ -460,8 +487,8 @@ sd_sc:
 		JSR l_ldat			; direct dot print
 		BRA card_ok
 hcxc:
-	LDX #HC_XC				; ### notify this instead ###
-	JSR disp_code
+;	LDX #HC_XC				; ### notify this instead ### NOPE!
+;	JSR disp_code			; maybe store type somewhere? *** *** ***
 card_ok:
 ;	JMP vol_find			; find and mount volume * NEW
 ; ******************************************************
@@ -689,16 +716,19 @@ vol_sector:
 	STX ptr+1
 	STZ ptr					; assume buffer is page-aligned (needed here!)
 	JSR ssec_rd				; read first sector on partition
+	BRA vol_ok
+sd_fail:
+	SEC						; will return error code in Y
+	RTS
 ; * volume mounted some way or another *
 vol_ok:
-	LDX #NX_STEP
-	JMP disp_code			; call and return
-*/
+	CLC
+	RTS
+
 ; TO DO *** TO DO ** TO DO
 
 ; ************************
 ; *** support routines ***
-; ************************
 
 ; *** *** standard SD card support *** ***
 ; *** send command in A to card *** arg.l, crc.b
@@ -720,7 +750,7 @@ sd_cmd:
 	ORA #1
 	JMP spi_tr				; SPI_transfer(crc|0x01); ...and return
 
-; *** *** special version of the above, in case SDSC is byte-addressed, CMD17 and CMD24 only *** ***
+; * special version of the above, in case SDSC is byte-addressed, CMD17 and CMD24 only *
 ba_cmd:
 ; send command header
 	ORA #$40
@@ -786,7 +816,7 @@ r7end:
 ; *** *** *********************************** *** ***
 ; *** *** hardware SD interface for Zacatecas *** ***
 ; *** *** *********************************** *** ***
-; *** send data in A, return received data in A *** nominally ~3 kiB/s
+; *** send data in A, return received data in A *** nominally ~3 kiB/s, around 2 kiB/s in practice
 spi_tr:
 	STA mosi
 	LDY #8					; x = 8;
@@ -808,7 +838,7 @@ mosi_set:
 		DEC IORB			; digitalWrite(SCK, 0);	** assume SD_CLK  is   1 **
 		DEY					; x--;
 		BNE tr_l			; (worst case, 8*43 = 344t)
-	LDA miso				; return in; (total including call overhead = 372t, ~242 µs)
+	LDA miso				; return in; (total including call overhead = 372t)
 	RTS
 
 ; *** enable card transfer ***
