@@ -2,7 +2,7 @@
 ; *** miniBIOS for Zacatecas *** v0.1a2
 ; ******************************
 ; (c) 2026 Carlos J. Santisteban
-; last modified 20261117-1050
+; last modified 20261118-1300
 
 ; *** CONIO ***
 ; display char in A, unless 0 > return key in A and C=0 if pressed, otherwise C=1 
@@ -513,8 +513,7 @@ try_fat:
 		BEQ mbr_ptype_ok
 			CMP #$0B		; or FAT32CHS?
 		BEQ mbr_ptype_ok
-			LDX #mbr_ptype-msg_sd
-			JSR fat_err
+;			LDY #MBR_PTYP
 			BRA vbr_chk		; try with VBR as this is non-fatal
 mbr_ptype_ok:
 		LDA #$55
@@ -524,8 +523,7 @@ mbr_ptype_ok:
 		CMP buffer+$1FF		; second byte
 		BEQ mbr_bsig_ok
 mbr_bsig_bad:
-			LDX #mbr_bsig-msg_sd
-			JSR fat_err
+;			LDY #MBR_BSIG
 			BRA vbr_chk		; try with VBR as this is non-fatal
 mbr_bsig_ok:
 ; let's get the partition's first sector
@@ -553,23 +551,23 @@ vbr_chk:
 		CMP #$90			; ...followed by NOP
 	BEQ vbr_jump_ok
 vbr_jump_bad:
-		LDX #vbr_jump-msg_sd
-		JMP fatal			; non-MBR errors ARE fatal
+		LDY #VBR_JUMP
+		JMP sd_fail			; non-MBR errors ARE fatal
 vbr_jump_ok: 
 	LDA buffer+$15			; media descriptor
 	CMP #$F0				; 3.5" or other media
 	BEQ bpb_media_ok
 		CMP #$F8			; also hard disk?
 	BEQ bpb_media_ok
-		LDX #bpb_media-msg_sd
-		JMP fatal
+		LDY #BPB_MEDIA
+		JMP sd_fail
 bpb_media_ok:
 	LDA buffer+$42			; extended boot signature
 	AND #%11111110			; ignore LSB
 	CMP #$28				; $28 or $29
 	BEQ bpb_extbs_ok
-		LDX #bpb_extbs-msg_sd
-		JMP fatal
+		LDY #BPB_EXTBS
+		JMP sd_fail
 bpb_extbs_ok:
 	LDA buffer+$B			; bytes per sector
 	BNE bpb_bps_bad			; LSB must be zero for 512
@@ -577,8 +575,8 @@ bpb_extbs_ok:
 		CMP #2				; 512 bytes/sector is the standard
 	BEQ bpb_bps_ok
 bpb_bps_bad:
-		LDX #bpb_bps-msg_sd
-		JMP fatal
+		LDY #BPB_BPS
+		JMP sd_fail
 bpb_bps_ok:
 ; VBR appears compatible, let's compute directory sector
 	LDA buffer+$10			; number of FATs (may assume it's one or two, at least a power of two)
@@ -629,10 +627,11 @@ dir_rd:
 		JSR ssec_rd			; read first sector on partition
 ;		JSR chk_brk			; ** check for BREAK key
 ;		BCC cont_mnt		; ** if pressed...
-		JSR l_pad
+		JSR l_pad			; LLL call
 		CMP #%01010000		; ** check for SELECT + START eeek
 		BNE cont_mnt		; ** if pressed...
-			JMP abort		; ** ...complain a bit and exit...
+			LDY #FAT_ABORT
+			JMP sd_fail		; ** ...complain and exit...
 cont_mnt:					; ** ...or continue as usual
 ; ...and scan its entries
 		LDX #>buffer		; temporary load address
@@ -667,7 +666,8 @@ next_entry:
 next_dirs:
 		DEC cnt				; one sector less in the first directory cluster
 		BNE dir_rd
-	JMP fail_brk			; notify error and lock
+	LDY #FAT_NOVOL			; otherwise, volume not found
+	JMP sd_fail				; notify error and exit
 vol_found:
 ; * compute volume header position from cluster in entry *
 ; first, subtract directory cluster from entry cluster 
