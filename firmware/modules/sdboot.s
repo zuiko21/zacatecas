@@ -2,21 +2,11 @@
 ; based on v2.1.11 with volume-into-FAT32
 ; (c) 2023-2026 Carlos J. Santisteban
 ; based on code from http://www.rjhcoding.com/avrc-sd-interface-1.php and https://en.wikipedia.org/wiki/Serial_Peripheral_Interface
-; last modified 20261114-2218
+; last modified 20261118-1326
 
 #ifndef	ZACATECAS
 #include	"zacatecas.h"
 #endif
-
-; offset for messages *** might be defined as error codes
-#define	OK_MSG		sd_ok-msg_sd
-#define	FAIL_MSG	sd_err-msg_sd
-#define	INVALID_SD	sd_inv-msg_sd
-#define	OLD_SD		sd_old-msg_sd
-#define	HC_XC		sd_hc-msg_sd
-#define	SPLASH		sd_splash-msg_sd
-#define	NX_STEP		sd_next-msg_sd
-#define	ABORT		sd_abort-msg_sd
 
 ; *****************
 ; *** RAM usage ***
@@ -316,25 +306,15 @@ ix2tab:
 ; ************************
 ; *** support routines ***
 ; ************************
-fatal:
-; * display fatal error for FAT32 *
-	JSR fat_err				; call non-fatal code below, and lock
-fail_brk:
-	LDX #FAIL_MSG
-	JSR disp_code
-	BRK						; PANIC!!!
-
-fat_err:
-; * display special error message for FAT32 mounting procedure *
-	LDA #13
-	JSR b_conio
 ; *** display code message ***
 disp_code:
+	LDX msg_ix, Y			; reindex
+dc_loop:		
 		LDA msg_sd, X		; get char
 	BEQ dc_end				; message ended
 		JSR b_conio			; display char (BIOS call keeps all registers)
 		INX
-		BNE disp_code		; next char
+		BNE dc_loop			; next char
 dc_end:
 	RTS
 
@@ -369,7 +349,7 @@ lb_wait:
 #endif
 
 ; ********************
-; *** diverse data ***
+; *** diverse data *** CHECK
 ; ********************
 ; messages for SD init, with offsets
 msg_sd:
@@ -409,4 +389,5 @@ bpb_bps:
 vol_name:
 	.asc	"STORAGE AV "	; 8+3 format, upper case, with padding spaces
 
+; *** indexes for messages *** TBD
 end_sd:
