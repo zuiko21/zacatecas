@@ -1,7 +1,7 @@
 ; **************************************
 ; *** Zacatecas hardware definitions ***
 ; **************************************
-; Last modified 20261119-0844
+; Last modified 20261119-1001
 
 #ifndef	SPEED
 #define		SPEED	1000000
@@ -128,5 +128,7 @@ fsize		= buffer+252	; file size INCLUDING 256-byte header
 #define	BPB_BPS		11
 #define	FAT_ABORT	12
 #define	FAT_NOVOL	13
+; some generic SD error codes
+#define	NON_EXEC	14
 ; ****************************
 
