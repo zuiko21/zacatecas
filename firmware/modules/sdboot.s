@@ -25,6 +25,9 @@ sd_main:
 ; SD device driver is fixed, proceed to check for SD card as usual
 sd_selected:
 	JSR b_dini				; check SD card (BIOS call)
+	BCC is_ok				; continue if succeeded
+		JSR
+is_ok:
 ; first sector *in volume* is already read!
 	STZ en_ix				; reset index
 	STZ cur_ix				; same with cursor
@@ -351,27 +354,33 @@ lb_wait:
 ; ********************
 ; *** diverse data *** CHECK
 ; ********************
-; messages for SD init, with offsets
-msg_sd:
-sd_splash:
-	.asc	"SD", 0
+; interface messages
+msg_sd
 sd_next:
 	.asc	12, "      ...       ", 13, " U/D (Se) [St/A]", 0
+sd_splash:
+	.asc	"SD", 0
 sd_old:
 	.asc	"1.x"
-sd_hc:
-	.asc	"HC "		; ### special prefix if CCS=1 ###
-sd_ok:
-	.asc	"OK", 0
 sd_err:
 	.asc	" FAIL!", 0
 sd_inv:
 	.asc	"NON-EXECUTABLE!", 0
-sd_abort:
-	.asc	" ### Aborted ###", 0
 
-; extended messages for FAT32 debugging
-;fat_msg:
+; error messages for SD init (reindexed)
+bios_sd:
+sd_ok:
+	.asc	"OK", 0		; just for completeness
+sd_idle:
+	.asc	"IDLE", 0
+sd_sdif:
+	.asc	"SD I/F", 0
+sd_inierr:
+	.asc	"INIT", 0
+sd_rdy:
+	.asc	"READY", 0
+sd_hc:
+	.asc	"HC"		; ### special prefix if CCS=1 ### rarely used, if any
 mbr_ptype:
 	.asc	"MBRpt", 0
 mbr_bsig:
@@ -384,10 +393,24 @@ bpb_extbs:
 	.asc	"BPB7ebs", 0
 bpb_bps:
 	.asc	"BPB2bps", 0
-
-; volume name into FAT32 device
-vol_name:
-	.asc	"STORAGE AV "	; 8+3 format, upper case, with padding spaces
-
-; *** indexes for messages *** TBD
+sd_abort:
+	.asc	" ### Aborted ###", 0
+sd_vol:
+	.asc	"STORAGE.AV", 0
+; *** indexes for messages ***
+sdix_tab:
+	.byt	sd_ok-sd_msg		; SD_OK
+	.byt	sd_idle-sd_msg		; IDLE_ERR
+	.byt	sd_sdif-sd_msg		; SDIF_ERR
+	.byt	sd_inierr-sd_msg	; INIT_ERR
+	.byt	sd_rdy-sd_msg		; READY_ERR
+	.byt	sd_hc-sd_msg		; HC_XC
+	.byt	mbr_ptype-sd_msg	; MBR_PTYP
+	.byt	mbr_bsig-sd_msg		; MBR_BSIG
+	.byt	vbr_jump-sd_msg		; VBR_JUMP
+	.byt	bpb_media-sd_msg	; BPB_MEDIA
+	.byt	bpb_extbs-sd_msg	; BPB_EXTBS
+	.byt	bpb_bps-sd_msg		; BPB_BPS
+	.byt	sd_abort-sd_msg		; FAT_ABORT
+	.byt	sd_vol-sd_msg		; FAT_NOVOL
 end_sd:
