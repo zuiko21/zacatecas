@@ -2,18 +2,22 @@
 ; based on v2.1.11 with volume-into-FAT32
 ; (c) 2023-2026 Carlos J. Santisteban
 ; based on code from http://www.rjhcoding.com/avrc-sd-interface-1.php and https://en.wikipedia.org/wiki/Serial_Peripheral_Interface
-; last modified 20261119-0913
+; last modified 20261119-1005
 
 #ifndef	ZACATECAS
 #include	"zacatecas.h"
 #endif
 
+; flags for convenience, note they're fixed b/c of the use of BIT instruction
+#define	CACH_EN		%01000000
+#define	DISP_EN		%10000000
+
 ; *****************
 ; *** RAM usage ***
 ; *****************
 ; *** directory storage ***
-en_tab		= $800			; now taking all available RAM, will need indirect-indexed
--end_pg		= $300			; originally at buffer+255, no longer the ugly hack...
+en_tab		= $800			; now taking all available RAM, will need indirect-indexed (32-byte entries)
+-end_pg		= $300			; originally at buffer+255, no longer the ugly hack... *** CHECK
 
 ; **************************
 ; *** SD-card bootloader ***
@@ -21,7 +25,7 @@ en_tab		= $800			; now taking all available RAM, will need indirect-indexed
 sd_main:
 .(
 	LDX #SPLASH
-	JSR disp_code			; display splash screen
+	JSR disp_code			; display splash screen ****ERR
 ; SD device driver is fixed, proceed to check for SD card as usual
 sd_selected:
 	JSR b_dini				; check SD card (BIOS call)
@@ -31,7 +35,7 @@ is_ok:
 ; first sector *in volume* is already read!
 	STZ en_ix				; reset index
 	STZ cur_ix				; same with cursor
-	LDA #%01000000			; disable display, enable caching
+	LDA #CACH_EN			; disable display, enable caching
 	STA flags
 	STA old_c				; any non-zero value will display first entry when available
 	BRA header_see			; because it's already loaded! perhaps checked too, but check it anyway
@@ -49,11 +53,11 @@ ls_disp:
 header_see:
 			JSR chk_head	; look for a valid header
 		BCC header_ok
-			LDA #%01000000
+			LDA #CACH_EN
 			TRB flags		; if not, that's the end of the volume, thus stop caching
 			LDA en_ix		; has any entry been recorded?
 		BNE no_cache		; already some, just let the user select one
-			LDX #INVALID	; otherwise it's an invalid card
+			LDX #NON_EXEC	; otherwise it's an invalid card
 			JMP switch_dev	; go away
 header_ok:
 ; header is valid, check whether bootable or not
@@ -62,6 +66,7 @@ header_ok:
 		BNE next_file
 chk_exec:
 			LDA bootsig+1
+;			ORA #2			; OPTIONAL *** this will allow Durango executables as well (pX/pZ)
 			CMP #'Z'
 		BNE next_file		; ignore generic files or Durango executables
 ; * executable detected, register sector and store filename *
@@ -85,7 +90,7 @@ en_name:
 enam_ex:
 			LDA en_ix		; was this the very first entry?
 			BNE not_first
-				LDA #%10000000
+				LDA #DISP_EN
 				TSB flags	; enable display
 not_first:
 			INC en_ix		; one more entry has been detected
@@ -95,7 +100,7 @@ not_first:
 				JSR l_lcmd	; send command (set DDRAM address)
 				LDA #'!'
 				JSR l_ldat	; direct print on LCD
-				LDA #%01000000
+				LDA #CACH_EN
 				TRB flags	; disable caching
 next_file:
 ; compute next header sector
@@ -129,7 +134,7 @@ no_up:
 				BIT #PAD_SEL			; discard SD?
 			BEQ no_sel
 					LDX #ABORT
-					JMP switch_dev		; go away if so
+					JMP switch_dev		; go away if so ****ERR
 no_sel:
 				BIT #PAD_A|PAD_ST		; finally, should execute?
 					BNE do_boot			; if so, let's go!
@@ -215,13 +220,13 @@ no_wrap:
 	JMP (ex_addr)			; * run from specified address (from preloaded header)
 ; if load was interrupted, switch device
 abort:
-	LDX #ABORT
+	LDX #ABORT				; ****ERR
 	BRA switch_dev
 ; ***************************
 ; *** standard exit point ***
 ; ***************************
 sd_fail:					; SD card failed
-	LDX #FAIL_MSG			; FAIL message
+	LDX #FAIL_MSG			; FAIL message ****ERR
 switch_dev:
 	JSR err_code			; display and buzz
 	JMP end_sd				; nothing else to do, try with default ROM, or nanoBoot instead -- but not here!
@@ -247,7 +252,7 @@ not_magic:
 chk_brk:
 ; * check for SELECT+START buttons (BREAK) *
 	JSR l_pad				; check instant pad status
-	CMP #%01010000			; check for SELECT + START eeek
+	CMP #(PAD_SEL|PAD_ST)	; check for SELECT + START eeek
 	BNE no_break
 		SEC
 		RTS					; notify BREAK and return
@@ -309,21 +314,28 @@ ix2tab:
 ; ************************
 ; *** support routines ***
 ; ************************
-; *** display code message ***
+; *** display generic message ***
 disp_code:
-	LDX msg_ix, Y			; reindex
-dc_loop:		
-		LDA msg_sd, X		; get char
+		LDA sd_msg, X		; get char
 	BEQ dc_end				; message ended
 		JSR b_conio			; display char (BIOS call keeps all registers)
 		INX
-		BNE dc_loop			; next char
+		BNE disp_code		; next char
 dc_end:
-	RTS
 
 ; *** buzzing error code display ***
 err_code:
-	JSR disp_code			; display message...
+; display error message
+	LDX sdix_tab, Y			; reindex
+ec_loop:		
+		LDA err_msg, X		; get char
+	BEQ ec_end				; message ended
+		JSR b_conio			; display char (BIOS call keeps all registers)
+		INX
+		BNE ec_loop			; next char
+ec_end:
+	LDX #sd_err-sd_msg		; generic error
+	JSR disp_code			; display it...
 ;	JMP long_buzz			; ...and buzz
 long_buzz:
 	LDA #%11100000			; this will set CB2 high (enable sound)
@@ -355,19 +367,18 @@ lb_wait:
 ; *** diverse data *** CHECK
 ; ********************
 ; interface messages *** CHECK
+sd_msg:
 sd_next:
 	.asc	12, "      ...       ", 13, " U/D (Se) [St/A]", 0
 sd_splash:
-	.asc	"SD", 0
+	.asc	"SD ", 0
 sd_old:
-	.asc	"1.x"
+	.asc	"1.x"			; any chance?
 sd_err:
 	.asc	" FAIL!", 0
-sd_inv:
-	.asc	"NON-EXECUTABLE!", 0
 
 ; error messages for SD init (reindexed)
-msg_sd:
+err_msg:
 sd_ok:
 	.asc	"OK", 0		; just for completeness
 sd_idle:
@@ -396,20 +407,25 @@ sd_abort:
 	.asc	" ### Aborted ###", 0
 sd_vol:
 	.asc	"STORAGE.AV", 0
-; *** indexes for messages ***
+; some generic errors as well
+sd_noex:
+	.asc	"NO EXEC", 0
+
+; *** offsets for error codes ***
 sdix_tab:
-	.byt	sd_ok-sd_msg		; SD_OK
-	.byt	sd_idle-sd_msg		; IDLE_ERR
-	.byt	sd_sdif-sd_msg		; SDIF_ERR
-	.byt	sd_inierr-sd_msg	; INIT_ERR
-	.byt	sd_rdy-sd_msg		; READY_ERR
-	.byt	sd_hc-sd_msg		; HC_XC
-	.byt	mbr_ptype-sd_msg	; MBR_PTYP
-	.byt	mbr_bsig-sd_msg		; MBR_BSIG
-	.byt	vbr_jump-sd_msg		; VBR_JUMP
-	.byt	bpb_media-sd_msg	; BPB_MEDIA
-	.byt	bpb_extbs-sd_msg	; BPB_EXTBS
-	.byt	bpb_bps-sd_msg		; BPB_BPS
-	.byt	sd_abort-sd_msg		; FAT_ABORT
-	.byt	sd_vol-sd_msg		; FAT_NOVOL
+	.byt	sd_ok-err_msg		; SD_OK
+	.byt	sd_idle-err_msg		; IDLE_ERR
+	.byt	sd_sdif-err_msg		; SDIF_ERR
+	.byt	sd_inierr-err_msg	; INIT_ERR
+	.byt	sd_rdy-err_msg		; READY_ERR
+	.byt	sd_hc-err_msg		; HC_XC
+	.byt	mbr_ptype-err_msg	; MBR_PTYP
+	.byt	mbr_bsig-err_msg	; MBR_BSIG
+	.byt	vbr_jump-err_msg	; VBR_JUMP
+	.byt	bpb_media-err_msg	; BPB_MEDIA
+	.byt	bpb_extbs-err_msg	; BPB_EXTBS
+	.byt	bpb_bps-err_msg		; BPB_BPS
+	.byt	sd_abort-err_msg	; FAT_ABORT
+	.byt	sd_vol-err_msg		; FAT_NOVOL
+	.byt	sd_noex-err_msg		; NO_EXEC
 end_sd:
