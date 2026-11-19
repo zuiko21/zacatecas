@@ -1,7 +1,7 @@
 ; **************************************
 ; *** Zacatecas hardware definitions ***
 ; **************************************
-; Last modified 20261118-1302
+; Last modified 20261119-0844
 
 #ifndef	SPEED
 #define		SPEED	1000000
@@ -90,6 +90,25 @@ fname		= buffer+8
 ftime		= buffer+248	; time in MS-DOS format
 fdate		= buffer+250	; date in MS-DOS format
 fsize		= buffer+252	; file size INCLUDING 256-byte header
+
+; *** *** SD interface constants *** ***
+#define	CMD0		0
+#define	CMD0_CRC	$94
+#define	CMD8		8
+#define	CMD8_ARG	$01AA
+#define	CMD8_CRC	$86
+#define	CMD16		16
+#define	CMD16_ARG	$0200
+#define	ACMD41		41
+#define	ACMD41_ARG	$40
+#define	CMD55		55
+#define	CMD58		58
+
+#define	CMD17		17
+#define	SD_MAX_READ_ATTEMPTS	203
+
+#define	CMD24		24
+#define	SD_MAX_WRITE_ATTEMPTS	254
 
 ; *** *** SD ERROR CODES  *** ***
 #define	SD_OK		0
