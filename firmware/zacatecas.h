@@ -1,7 +1,7 @@
 ; **************************************
 ; *** Zacatecas hardware definitions ***
 ; **************************************
-; Last modified 20261119-1429
+; Last modified 20261119-1812
 
 #ifndef	SPEED
 #define		SPEED	1000000
@@ -69,24 +69,51 @@
 	fw_scur	= $0222			; flag D7=cursor ON
 	gamepad	= $0226
 
+; **********************
+; *** zeropage usage ***
+; CONIO zeropage usage ($E4-$E7) *** CHECK
+cio_src	= $E4
+cio_pt	= cio_src+2	; $E6-$E7
+
+; SD loader usage ($E8-$EB)
+cur_ix	= $E8		; $E8 ### directory position ### new, 8-bit so far
+old_c	= cur_ix+ 1	; $E9
+en_ix	= old_c	+ 1	; $EA ### directory storage ### 8-bit so far
+flags	= en_ix	+ 1 ; $EB flags to enable caching (D6) and display (D7)
+
+; SD driver usage ($EC-$FB)
+crc		= $EC		; $EC
+sd_ver	= crc	+ 1	; $ED ### not so temporary ###
+mosi	= sd_ver+ 1	; $EE
+miso	= mosi	+ 1	; $EF
+arg		= miso	+ 1	; $F0-$F3
+res		= arg	+ 4	; $F4-$F8
+tmpba	= res	- 1	; actually $F4-$F5, as $F3 is not used *** HOPE IT WORKS!
+token	= res	+ 5	; $F9
+ptr		= token	+ 1	; $FA-$FB
+
+end_pg		= $3F5			; *** *** *** CHECK
+
 ; ****************************
 ; *** *** SD card BIOS *** *** CHECK
-; *** mount point  *** NEW for FAT32 support($2E8-$2F1)
-ds_cnt		= $2E8			; directory sector counter, unfortunately no longer in ZP ($2E8) *** LOCAL INIT
-cnt			= ds_cnt		; *** *** DEBUG USE *** ***
-sec_clus	= ds_cnt+1		; number of sectors per cluster $2E9 *** LOCAL INIT
-dir_clus	= sec_clus+1	; first cluster of directory (needed for subtract) $2EA *** LOCAL INIT
-mnt_point	= dir_clus+4	; mount point (BIG endian like arg) $2EE..$2F1 *** *** GLOBAL
+; *** mount point  *** NEW for FAT32 support ($3F6-$3FF)
+cnt			= $3F6			; directory sector counter, unfortunately no longer in ZP $3F6
+sec_clus	= cnt+1			; number of sectors per cluster $3F7
+dir_clus	= sec_clus+1	; first cluster of directory (needed for subtract) $3F8-$3FB
+mnt_point	= dir_clus+4	; mount point (BIG endian like arg) $3FC..$3FF *** GLOBAL
 
 ; *** sector buffer and header pointers ***
 tmp_siz		= $2FA			; $2FA-$2FB top 16 bits of temporary size for remaining free block (max. 16M)
 hd_cache	= tmp_siz+2		; $2FC-$2FF current header sector position (big-endian)
+
 buffer		= $400			; EEEEEEK
 magic1		= buffer+0		; must contain zero
 magic2		= buffer+7		; must contain CR (13)
 magic3		= buffer+255	; must contain zero (assume filesize < 16 MiB)
 bootsig		= buffer+1		; must contain 'dX' for bootable ROM images, 'dA' for generic files, 'dL' for free space, 'pZ' for regular executables
-fname		= buffer+8
+ld_addr		= buffer+3		; load address for Pocket format, '**' otherwise
+ex_addr		= buffer+5		; execution address for Pocket format, '**' otherwise
+fname		= buffer+8		; NUL-terminated filename, then NUL-terminated comment (before +$E6)
 ftime		= buffer+248	; time in MS-DOS format
 fdate		= buffer+250	; date in MS-DOS format
 fsize		= buffer+252	; file size INCLUDING 256-byte header
