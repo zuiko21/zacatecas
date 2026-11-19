@@ -2,7 +2,7 @@
 ; based on v2.1.11 with volume-into-FAT32
 ; (c) 2023-2026 Carlos J. Santisteban
 ; based on code from http://www.rjhcoding.com/avrc-sd-interface-1.php and https://en.wikipedia.org/wiki/Serial_Peripheral_Interface
-; last modified 20261118-1326
+; last modified 20261119-0913
 
 #ifndef	ZACATECAS
 #include	"zacatecas.h"
@@ -354,8 +354,7 @@ lb_wait:
 ; ********************
 ; *** diverse data *** CHECK
 ; ********************
-; interface messages
-msg_sd
+; interface messages *** CHECK
 sd_next:
 	.asc	12, "      ...       ", 13, " U/D (Se) [St/A]", 0
 sd_splash:
@@ -368,7 +367,7 @@ sd_inv:
 	.asc	"NON-EXECUTABLE!", 0
 
 ; error messages for SD init (reindexed)
-bios_sd:
+msg_sd:
 sd_ok:
 	.asc	"OK", 0		; just for completeness
 sd_idle:
