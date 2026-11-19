@@ -2,7 +2,7 @@
 ; based on v2.1.11 with volume-into-FAT32
 ; (c) 2023-2026 Carlos J. Santisteban
 ; based on code from http://www.rjhcoding.com/avrc-sd-interface-1.php and https://en.wikipedia.org/wiki/Serial_Peripheral_Interface
-; last modified 20261119-1005
+; last modified 20261119-1042
 
 #ifndef	ZACATECAS
 #include	"zacatecas.h"
@@ -11,6 +11,10 @@
 ; flags for convenience, note they're fixed b/c of the use of BIT instruction
 #define	CACH_EN		%01000000
 #define	DISP_EN		%10000000
+
+; offsets for (non-fatal) messages
+#define	SDSPLASH	sd_splash-sd_msg
+#define	
 
 ; *****************
 ; *** RAM usage ***
@@ -25,12 +29,13 @@ en_tab		= $800			; now taking all available RAM, will need indirect-indexed (32-
 sd_main:
 .(
 	LDX #SPLASH
-	JSR disp_code			; display splash screen ****ERR
+	JSR disp_code			; display splash screen while mounting SD
+; check SD type for display *** TBD
 ; SD device driver is fixed, proceed to check for SD card as usual
 sd_selected:
 	JSR b_dini				; check SD card (BIOS call)
 	BCC is_ok				; continue if succeeded
-		JSR
+		JMP err_code		; display error with buzz... and go away
 is_ok:
 ; first sector *in volume* is already read!
 	STZ en_ix				; reset index
@@ -125,7 +130,8 @@ no_down:
 					LDA cur_ix			; unless we're at the first one
 					BNE do_up
 offlimits:
-						JSR buzz		; complain a bit if so
+						LDA #7			; complain a bit if so
+						JSR b_conio		; BIOS call for BEL
 						BRA no_key
 do_up:
 					DEC cur_ix			; just set cursor to previous entry
@@ -226,10 +232,9 @@ abort:
 ; *** standard exit point ***
 ; ***************************
 sd_fail:					; SD card failed
-	LDX #FAIL_MSG			; FAIL message ****ERR
+	LDX #FAIL_MSG			; FAIL message****
 switch_dev:
-	JSR err_code			; display and buzz
-	JMP end_sd				; nothing else to do, try with default ROM, or nanoBoot instead -- but not here!
+	JMP err_code			; display and buzz, try with default ROM, or nanoBoot instead -- but not here!
 
 ; ********************************
 ; *** some high-level routines ***
@@ -323,7 +328,7 @@ disp_code:
 		BNE disp_code		; next char
 dc_end:
 
-; *** buzzing error code display ***
+; *** buzzing error code display *** no return
 err_code:
 ; display error message
 	LDX sdix_tab, Y			; reindex
@@ -356,7 +361,7 @@ lb_wait:
 	STA ACR					; restore ACR
 	LDA #%00100000			; was %111xxxxx, TRB will turn into %110xxxxx
 	TRB PCR
-	RTS
+	BRA end_sd				; EXIT, no return!
 .)
 ; *** progress bar module ***
 #ifndef	PROGRESS
@@ -368,19 +373,19 @@ lb_wait:
 ; ********************
 ; interface messages *** CHECK
 sd_msg:
-sd_next:
-	.asc	12, "      ...       ", 13, " U/D (Se) [St/A]", 0
 sd_splash:
 	.asc	"SD ", 0
 sd_old:
 	.asc	"1.x"			; any chance?
+sd_next:
+	.asc	12, "      ...       ", 13, " U/D (Se) [St/A]", 0	; *** CHECK
 sd_err:
 	.asc	" FAIL!", 0
 
 ; error messages for SD init (reindexed)
 err_msg:
 sd_ok:
-	.asc	"OK", 0		; just for completeness
+	.asc	"OK", 7, 0		; just for completeness, with short beep, may be indexed from sd_msg
 sd_idle:
 	.asc	"IDLE", 0
 sd_sdif:
@@ -390,7 +395,7 @@ sd_inierr:
 sd_rdy:
 	.asc	"READY", 0
 sd_hc:
-	.asc	"HC"		; ### special prefix if CCS=1 ### rarely used, if any
+	.asc	"HC/XC"		; ### special prefix if CCS=1 ### will be indexed from sd_msg instead
 mbr_ptype:
 	.asc	"MBRpt", 0
 mbr_bsig:
@@ -407,7 +412,7 @@ sd_abort:
 	.asc	" ### Aborted ###", 0
 sd_vol:
 	.asc	"STORAGE.AV", 0
-; some generic errors as well
+; some generic fatal errors as well
 sd_noex:
 	.asc	"NO EXEC", 0
 
@@ -427,5 +432,5 @@ sdix_tab:
 	.byt	bpb_bps-err_msg		; BPB_BPS
 	.byt	sd_abort-err_msg	; FAT_ABORT
 	.byt	sd_vol-err_msg		; FAT_NOVOL
-	.byt	sd_noex-err_msg		; NO_EXEC
+	.byt	sd_noex-err_msg		; NON_EXEC, actually from SD bootloader interface
 end_sd:
