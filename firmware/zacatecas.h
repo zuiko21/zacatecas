@@ -1,7 +1,7 @@
 ; **************************************
 ; *** Zacatecas hardware definitions ***
 ; **************************************
-; Last modified 20261119-1001
+; Last modified 20261119-1429
 
 #ifndef	SPEED
 #define		SPEED	1000000
@@ -72,16 +72,16 @@
 ; ****************************
 ; *** *** SD card BIOS *** *** CHECK
 ; *** mount point  *** NEW for FAT32 support($2E8-$2F1)
-ds_cnt		= $2E8			; directory sector counter, unfortunately no longer in ZP ($2E8)
+ds_cnt		= $2E8			; directory sector counter, unfortunately no longer in ZP ($2E8) *** LOCAL INIT
 cnt			= ds_cnt		; *** *** DEBUG USE *** ***
-sec_clus	= ds_cnt+1		; number of sectors per cluster $2E9
-dir_clus	= sec_clus+1	; first cluster of directory (needed for subtract) $2EA
-mnt_point	= dir_clus+4	; mount point (BIG endian like arg) $2EE..$2F1
+sec_clus	= ds_cnt+1		; number of sectors per cluster $2E9 *** LOCAL INIT
+dir_clus	= sec_clus+1	; first cluster of directory (needed for subtract) $2EA *** LOCAL INIT
+mnt_point	= dir_clus+4	; mount point (BIG endian like arg) $2EE..$2F1 *** *** GLOBAL
 
 ; *** sector buffer and header pointers ***
 tmp_siz		= $2FA			; $2FA-$2FB top 16 bits of temporary size for remaining free block (max. 16M)
 hd_cache	= tmp_siz+2		; $2FC-$2FF current header sector position (big-endian)
-buffer		= $300
+buffer		= $400			; EEEEEEK
 magic1		= buffer+0		; must contain zero
 magic2		= buffer+7		; must contain CR (13)
 magic3		= buffer+255	; must contain zero (assume filesize < 16 MiB)
@@ -90,45 +90,4 @@ fname		= buffer+8
 ftime		= buffer+248	; time in MS-DOS format
 fdate		= buffer+250	; date in MS-DOS format
 fsize		= buffer+252	; file size INCLUDING 256-byte header
-
-; *** *** SD interface constants *** ***
-#define	CMD0		0
-#define	CMD0_CRC	$94
-#define	CMD8		8
-#define	CMD8_ARG	$01AA
-#define	CMD8_CRC	$86
-#define	CMD16		16
-#define	CMD16_ARG	$0200
-#define	ACMD41		41
-#define	ACMD41_ARG	$40
-#define	CMD55		55
-#define	CMD58		58
-
-#define	CMD17		17
-#define	SD_MAX_READ_ATTEMPTS	203
-
-#define	CMD24		24
-#define	SD_MAX_WRITE_ATTEMPTS	254
-
-; *** *** SD ERROR CODES  *** ***
-#define	SD_OK		0
-#define	IDLE_ERR	1
-#define	SDIF_ERR	2
-#define	INIT_ERR	3
-#define	READY_ERR	4
-; HC_XC not actually an error, should write this value anywhere
-#define	HC_XC		5
-; FAT32 specific errors (non-fatal, thus seldom used if any)
-#define MBR_PTYP	6
-#define	MBR_BSIG	7
-; FAT32 fatal errors
-#define	VBR_JUMP	8
-#define	BPB_MEDIA	9
-#define	BPB_EXTBS	10
-#define	BPB_BPS		11
-#define	FAT_ABORT	12
-#define	FAT_NOVOL	13
-; some generic SD error codes
-#define	NON_EXEC	14
-; ****************************
 
