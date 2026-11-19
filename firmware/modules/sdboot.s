@@ -2,13 +2,13 @@
 ; based on v2.1.11 with volume-into-FAT32
 ; (c) 2023-2026 Carlos J. Santisteban
 ; based on code from http://www.rjhcoding.com/avrc-sd-interface-1.php and https://en.wikipedia.org/wiki/Serial_Peripheral_Interface
-; last modified 20261119-1042
+; last modified 20261119-1158
 
 #ifndef	ZACATECAS
 #include	"zacatecas.h"
 #endif
 
-; flags for convenience, note they're fixed b/c of the use of BIT instruction
+; flags for convenience, note they're fixed b/c of the BIT instruction
 #define	CACH_EN		%01000000
 #define	DISP_EN		%10000000
 
@@ -28,15 +28,15 @@ en_tab		= $800			; now taking all available RAM, will need indirect-indexed (32-
 ; **************************
 sd_main:
 .(
-	LDX #SPLASH
+	LDX #SDSPLASH
 	JSR disp_code			; display splash screen while mounting SD
-; check SD type for display *** TBD
 ; SD device driver is fixed, proceed to check for SD card as usual
 sd_selected:
 	JSR b_dini				; check SD card (BIOS call)
 	BCC is_ok				; continue if succeeded
 		JMP err_code		; display error with buzz... and go away
 is_ok:
+; check SD type for display
 ; first sector *in volume* is already read!
 	STZ en_ix				; reset index
 	STZ cur_ix				; same with cursor
