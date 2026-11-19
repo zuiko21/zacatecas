@@ -2,10 +2,12 @@
 ; *** miniBIOS for Zacatecas *** v0.1a2
 ; ******************************
 ; (c) 2026 Carlos J. Santisteban
-; last modified 20261118-1300
+; last modified 20261119-0852
 
+; *************
 ; *** CONIO ***
-; display char in A, unless 0 > return key in A and C=0 if pressed, otherwise C=1 
+; *************
+; display char in A, unless 0 > return key in A and C=0 if something is pressed, otherwise C=1 
 conio:
 	PHA
 	PHX
@@ -61,11 +63,11 @@ no_home:
 		BNE no_bell
 ; short beep, set IRQ frequency to 2 kHz and wait 255 ticks (almost 1/8 second)
 			PHP				; just in case...
-			CLI				; interrupts MUST be on!
 			LDY #<(t1ct/8)
 			LDA #>(t1ct/8)	; will sound at 1 kHz
 			STY T1CL
 			STA T1CH		; set T1 speed
+			CLI				; interrupts MUST be on!
 			LDA #%11100000	; this will set CB2 high (enable sound)
 			TSB PCR
 			LDA ACR			; previous state of ACR
@@ -625,10 +627,8 @@ dir_rd:
 		STX ptr+1
 		STZ ptr				; assume buffer is page-aligned EEEEEEEEEEEK
 		JSR ssec_rd			; read first sector on partition
-;		JSR chk_brk			; ** check for BREAK key
-;		BCC cont_mnt		; ** if pressed...
-		JSR l_pad			; LLL call
-		CMP #%01010000		; ** check for SELECT + START eeek
+		JSR l_pad			; check keypad, LLL call
+		CMP #%01010000		; ** check for BREAK (SELECT + START) eeek
 		BNE cont_mnt		; ** if pressed...
 			LDY #FAT_ABORT
 			JMP sd_fail		; ** ...complain and exit...
@@ -711,21 +711,19 @@ vol_sector:
 		INY					; next iteration
 		DEX
 		BPL vol_sector
-; MUST read first sector on DURANGO.AV!
+; MUST read first sector on STORAGE.AV!
 	LDX #>buffer			; temporary load address
 	STX ptr+1
 	STZ ptr					; assume buffer is page-aligned (needed here!)
 	JSR ssec_rd				; read first sector on partition
-	BRA vol_ok
-sd_fail:
-	SEC						; will return error code in Y
-	RTS
-; * volume mounted some way or another *
+; SUCCESS *** volume mounted some way or another ***
 vol_ok:
 	CLC
 	RTS
-
-; TO DO *** TO DO ** TO DO
+; ERROR *** common exit point for error handling ***
+sd_fail:
+	SEC						; will return error code in Y
+	RTS
 
 ; ************************
 ; *** support routines ***
@@ -858,3 +856,10 @@ cs_disable:
 	TSB IORB				; CS_DISABLE();
 	LDA #$FF
 	JMP spi_tr				; SPI_transfer(0xFF); ...and return
+
+; ********************
+; *** data section ***
+; ********************
+; volume name into FAT32 device
+vol_name:
+	.asc	"STORAGE AV "	; 8+3 format, upper case, with padding spaces
