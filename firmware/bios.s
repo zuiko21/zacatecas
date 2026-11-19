@@ -2,7 +2,9 @@
 ; *** miniBIOS for Zacatecas *** v0.1a2
 ; ******************************
 ; (c) 2026 Carlos J. Santisteban
-; last modified 20261119-0852
+; last modified 20261119-1210
+
+#include "bios.h"
 
 ; *************
 ; *** CONIO ***
@@ -628,7 +630,7 @@ dir_rd:
 		STZ ptr				; assume buffer is page-aligned EEEEEEEEEEEK
 		JSR ssec_rd			; read first sector on partition
 		JSR l_pad			; check keypad, LLL call
-		CMP #%01010000		; ** check for BREAK (SELECT + START) eeek
+		CMP #(PAD_ST|PAD_SEL)		; ** check for BREAK (SELECT + START) eeek
 		BNE cont_mnt		; ** if pressed...
 			LDY #FAT_ABORT
 			JMP sd_fail		; ** ...complain and exit...
