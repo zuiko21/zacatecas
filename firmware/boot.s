@@ -1,8 +1,9 @@
 ; Modular firmware for Zacatecas SBC
 ; (c) 2026 Carlos J. Santisteban
-; last modified 20261114-1321
+; last modified 20261120-0832
 
 ; add -DDEFAULT=path-to-default-Pocket
+; add -DALONE for DEVELOPMENT only (requires external nanoBoot in ROM)
 
 ; standard definitions
 #ifndef	ZACATECAS
@@ -14,15 +15,17 @@
 #endif
 
 ; *** linked bootloader ROM ***
+#ifdef	ALONE
+#define	LOADADDR	$7000
+	*		= LOADADDR		; 4K should suffice, and allow space in lower RAM
+#else
 	*		= $C000			; standard 16K ROM
-
 ; default ROM goes first
-
 #ifdef	DEFAULT
 #include	DEFAULT
 	.dsb	$F000-*, $FF	; fill up to 4K loader *** CHECK
 #endif
-
+#endif
 ; ***********************
 ; *** standard header ***
 ; ***********************
@@ -30,11 +33,17 @@
 rom_start:
 ; header ID
 	.byt	0				; [0]=NUL, first magic number
+#ifdef	ALONE
+	.asc	"pZ"			; Zacatecas Pocket executable
+	.word	LOADADDR		; load address in RAM
+	.word	reset			; execution address
+#else
 	.asc	"dX"			; bootable ROM
 	.asc	"****"			; reserved
+#endif
 	.byt	13				; [7]=NEWLINE, second magic number
 ; filename
-	.asc	"Zacatecas boot firmware 0.2a2", 0	; C-string with filename @ [8], max 220 chars
+	.asc	"Zacatecas boot firmware 0.2a3", 0	; C-string with filename @ [8], max 220 chars
 ;	.asc	"(comment)"		; optional C-string with comment after filename, filename+comment up to 220 chars
 	.byt	0				; second terminator for optional comment, just in case
 
@@ -46,19 +55,19 @@ rom_start:
 ; NEW main commit (user field 1)
 	.asc	"$$$$$$$$"
 ; NEW coded version number
-	.word	$0202			; 0.2a2		%vvvvrrrrsshhbbbb, where revision = %hhbbbb, ss = %00 (alpha), %01 (beta), %10 (RC), %11 (final)
+	.word	$0203			; 0.2a3		%vvvvrrrrsshhbbbb, where revision = %hhbbbb, ss = %00 (alpha), %01 (beta), %10 (RC), %11 (final)
 
 ; date & time in MS-DOS format at byte 248 ($F8)
-	.word	$48A0			; time, 09.05		0100 1-000 101-0 0000
-	.word	$5D6E			; date, 2026/11/14	0101 110-1 011-0 1110
+	.word	$4400			; time, 08.32		0100 0-100 000-0 0000
+	.word	$5D74			; date, 2026/11/20	0101 110-1 011-1 0100
 ; filesize in top 32 bits (@ $FC) now including header ** must be EVEN number of pages because of 512-byte sectors
-	.word	file_end-rom_start			; filesize (rom_end is actually $10000)
+	.word	file_end-rom_start			; filesize (rom_end is actually $10000, otherwise use Pocket size)
 	.word	0							; 64K space does not use upper 16 bits, [255]=NUL may be third magic number
 
-; *******************
-; *** actual code ***
-; *******************
-+reset:
+; ************************
+; *** actual boot code ***
+; ************************
+reset:
 	SEI						; usual 6502 stuff, just in case
 	CLD
 	LDX #$FF
@@ -66,14 +75,16 @@ rom_start:
 ; Chihuahua/Zacatecas stuff
 	LDA #LCD_DIS			; make sure LCD ENABLE is low ASAP, keep all LEDs off as well
 	STA IORB
-	STX DDRB				; PB is always output
+	LDA #(SD_MISO^$FF)		; EEEEEEEEEEEEEEK
+	STA DDRB				; PB is always output EXCEPT MISO
 	STZ DDRA				; PA is input most of the time
 	LDY #$7F				; disable all interrupt sources for a while
 	STY IER
+	STY IFR					; and clear any previous interrupt, just in case
 	INY						; VIA should respond as all sources disabled ($80)
 	CPY IER					; let's check for VIA presence
 	BEQ continue
-		JMP panic			; otherwise this is not Chihuahua, or something is very wrong
+		JMP panic			; otherwise this is not Zacatecas, or something is very wrong
 continue:
 	LDA #%11000000			; make CB2 low to disable sound, rest as inputs
 	STA PCR
@@ -91,13 +102,11 @@ continue:
 	LDX #>STDNMI
 	STY fw_nmi
 	STX fw_nmi+1
-startup:
+; *** startup ***
 	LDA #%11000000			; this far, only T1 interrupt is enabled
 	STA IER
 	CLI						; enable interrupts, and we're up and running!
-
-; BIOS init *** CHECK
-	STZ fw_cbin				; standard (non-DLE) CONIO mode
+	STZ fw_cbin				; BIOS init, standard (non-DLE) CONIO mode
 ; Startup message
 	JSR l_lrst				; init screen (LLL call)
 	LDY #<splash
@@ -106,13 +115,16 @@ startup:
 	STX $FB					; *** TBD replace address with label
 	JSR print
 	JSR bong				; make startup sound
-; ************************************************************************
+
+; ***********************
+; *** boot key combos ***
+; ***********************
 ; enable LCD backlight... if desired
 	LDA gamepad				; check keys
 	BIT #PAD_LT				; press LEFT to turn Backlight OFF
 	BNE bl_off
 		TAY					; preserve gamepad status, saving 1 byte
-		LDA #LCD_BLOFF		; clear LCD_BL to turn *on* the light!
+		LDA #LCD_LIGHT		; clear LCD_BL to turn *on* the light!
 		TRB IORB
 		TYA					; retrieve A
 bl_off:
@@ -121,12 +133,21 @@ bl_off:
 	BEQ go_sd
 		JMP go_nanoboot		; if so, skip SD & ROM and wait for nanoBoot
 .)
+
+; ***************************************************************
+; *** system is up and running, execute different bootloaders ***
+; ***************************************************************
 go_sd:
 #include "modules/sdboot.s"
+
 go_rom:
 #include "modules/romboot.s"
+
 go_nanoboot:
 #include "modules/nanoboot.s"
+
+; *** *** should not arrive here EVER *** ***
+	BRK					; PANIC instead
 
 ; ***********************
 ; *** USEFUL ROUTINES ***
@@ -140,7 +161,7 @@ print:
 pr_loop:
 		LDA ($FA), Y
 	BEQ pr_exit
-		JSR b_conio			; JSR LCD_data		; must call proper vectored CONIO
+		JSR b_conio			; must call proper vectored CONIO
 		INY
 		BNE pr_loop			; could use BRA as well, but this limits to 256 chars
 pr_exit:
@@ -149,18 +170,20 @@ pr_exit:
 ; *** bong sound ***
 bong:
 .(
-	LDA #%11101110			; set CB2 high in order to activate sound (PB7 from T1)
-	STA PCR
-	PHP
-	SEI						; just in case
-	LDA #%11010000			; T1 free run (PB7 on), SR free, no latch
-	STA ACR					; shifting starts now (SR not yet loaded)
+;	PHP
+;	SEI						; just in case
 	LDY #<(t1ct/8)
 	LDA #>(t1ct/8)			; *** placeholder 1 kHz
 	STY T1CL
 	STA T1CH				; set T1 speed
 	STZ T2CL
 	STZ T2CH				; now pointing to T2CH, free run at max speed
+	LDA #%11100000			; this will set CB2 high (enable sound)
+	TSB PCR
+	LDA ACR					; previous state of ACR
+	PHA						; keep it just in case
+	LDA #%11010000			; T1 free run (PB7 on), SR free, no latch
+	STA ACR					; start beeping
 	LDA #$FF				; max volume PWM
 bvol:
 		STA VSR				; set PWM
@@ -172,15 +195,15 @@ bloop:
 			BNE bloop
 		ASL					; one bit less
 		BCS bvol
-	LDA #%01000000			; T1 free run (but PB7 off EEEEK), no SR, no latch
-	STA ACR					; shifting stops
-	LDA #%11001110			; must set CB2 low!
-	STA PCR					; stop sound, no matter PB7 status
+	PLA
+	STA ACR					; restore ACR (and stop shifting)
+	LDA #%00100000			; was %111xxxxx, TRB will turn into %110xxxxx
+	TRB PCR					; CB2 low stops sound, no matter PB7 status
 	LDX #>t1ct				; restore standard T1 interrupt speed
 	LDY #<t1ct
 	STY T1CL
 	STX T1CH				; (re)start counting!
-	PLP						; restore interrupts if needed
+;	PLP						; restore interrupts if needed
 	RTS
 .)
 ; ******************************************
@@ -205,7 +228,7 @@ end_t1:
 		LDA IORA			; assumed to stay in read mode!
 		EOR #$FF			; EEEK
 		STA gamepad			; standard gamepad address
-		PLA					; restore this
+		PLA					; restore this (usual fast interrupt)
 		RTI
 no_via:						; VIA is the only interrupt source... this should be either BRK or spurious!
 	PHX
@@ -220,7 +243,7 @@ no_brk:
 	EOR #LED_EMI			; toggle Emilio's LED
 	STA IORB
 ; restore and exit
-	PLX
+	PLX						; extra saved register to check B flag
 	PLA
 	RTI						; otherwise restore status and continue
 no_t1:
@@ -235,31 +258,31 @@ no_t2:
 	ASL
 ;	BPL no_cb1
 ;		BIT IORB			; ack
-; ** placeholder**
+; **placeholder**
 ;		BRA via_exit
 no_cb1:
 	ASL
 ;	BPL no_cb2
 ;		BIT IORB			; ack... if not independent!
-; ** placeholder**
+; **placeholder**
 ;		BRA via_exit
 no_cb2:
 	ASL
 	BPL no_sr
 		BIT VSR				; ack
-; ** placeholder** mainly for SS22 port
+; **placeholder** mainly for SS22 port
 		BRA via_exit
 no_sr:
 	ASL
 	BPL no_ca1
 		BIT IORA			; ack
-; ** placeholder** for external interrupt
+; **placeholder** for external interrupt
 		BRA via_exit
 no_ca1:
 	ASL
 	BPL no_ca2
 		BIT IORA			; ack... if not independent!
-; ** placeholder** for SS22 /STROBE
+; **placeholder** for SS22 /STROBE
 ;		BRA via_exit		; already there!
 no_ca2:
 via_exit:
@@ -273,7 +296,7 @@ via_exit:
 panic:
 .(
 	SEI						; just in case
-	LDA #$FF
+	LDA #(SD_MISO^$FF)		; EEEEEEEEEEEEEEK
 	STA DDRB				; retrieve outputs
 	LDA #%11100000			; make CB2 hi for clicking, rest as inputs
 	STA PCR
