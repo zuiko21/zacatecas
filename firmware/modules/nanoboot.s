@@ -1,6 +1,6 @@
 ; nanoBoot v2 (Zacatecas version, also Chihuahua suitable with an LCD hat)
 ; (c) 2024-2026 Carlos J. Santisteban
-; last modified 20261117-0953
+; last modified 20261120-0906
 
 ; add -DALONE for standalone version (otherwise module into boot.s, after sdboot.s/romboot.s)
 
@@ -62,7 +62,8 @@ nb_start:
 ; Chihuahua/Zacatecas stuff
 	LDA #LCD_DIS			; make sure LCD ENABLE is low ASAP, keep all LEDs off as well
 	STA IORB
-	STX DDRB				; PB is always output
+	LDA #(SD_MISO^$FF)		; EEEEEEEEEEEEEEK
+	STA DDRB				; PB is always output EXCEPT MISO
 	STZ DDRA				; PA is input most of the time
 	LDY #$7F				; disable all interrupt sources for a while
 	STY IER
