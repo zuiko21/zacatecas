@@ -1,6 +1,6 @@
 ; nanoBoot v2 (Zacatecas version, also Chihuahua suitable with an LCD hat)
 ; (c) 2024-2026 Carlos J. Santisteban
-; last modified 20261120-0942
+; last modified 20261120-1024
 
 ; add -DALONE for standalone version (otherwise module into boot.s, after sdboot.s/romboot.s)
 
@@ -37,7 +37,7 @@ rom_start:
 ; NEW coded version number
 	.word	$2242			; 2.2b2		%vvvvrrrrsshhbbbb, where revision = %hhrrrr, ss = %00 (alpha), %01 (beta), %10 (RC), %11 (final)
 ; date & time in MS-DOS format at byte 248 ($F8)
-	.word	$4D40			; time, 9.42		%0100 1-101 010-0 0000
+	.word	$5300			; time, 10.24		%0101 0-011 000-0 0000
 	.word	$5D74			; date, 2026/11/20	%0101 110-1 011-1 0100
 ; filesize in top 32 bits (@ $FC) now including header ** must be EVEN number of pages because of 512-byte sectors
 	.word	$10000-rom_start			; filesize (rom_end is actually $10000)
@@ -81,28 +81,34 @@ continue:
 	LDY #<t1ct
 	STY T1CL
 	STX T1CH				; start counting!
-	LDY #<isr				; supplied ISR address
-	LDX #>isr
-	STY fw_irq				; set vector
-	STX fw_irq+1
-	LDY #<STDNMI			; same with (placeholder) NMI
-	LDX #>STDNMI
-	STY fw_nmi
-	STX fw_nmi+1
-	LDA #%11000000			; this far, only T1 interrupt is enabled
-	STA IER
+;	LDY #<isr				; supplied ISR address *** not needed as nanoBoot handlers will be set
+;	LDX #>isr
+;	STY fw_irq				; set vector
+;	STX fw_irq+1
+;	LDY #<STDNMI			; same with (placeholder) NMI
+;	LDX #>STDNMI
+;	STY fw_nmi
+;	STX fw_nmi+1
+;	LDA #%11000000			; this far, only T1 interrupt is enabled
+;	STA IER
 	STZ fw_cbin				; standard (non-DLE) CONIO mode
 	JSR l_lrst				; init screen (LLL call)
 ; as usual, holding LEFT during startup disables LCD backlight
-	LDA gamepad				; check keys
+	LDA IORA				; check keys (DIRECT input)
+	EOR #$FF
 	BIT #PAD_LT				; press LEFT to turn Backlight OFF
 	BNE bl_off
 		TAY					; preserve gamepad status, saving 1 byte
-		LDA #LCD_BLOFF		; clear LCD_BL to turn *on* the light!
+		LDA #LCD_LIGHT		; clear LCD_BL to turn *on* the light!
 		TRB IORB
 		TYA					; retrieve A
-bl_off:
 #endif
+bl_off:
+	LDA #%01111111			; disable ALL interrupt sources EEEEEEEEEEK
+	STA IER
+	STA IFR					; and clear any pending one, of course
+
+; let's display some feedback
 	LDA #LED_EMI			; keep Emilio's LED turned on
 	TRB IORB
 ; * display nanoBoot banner *
@@ -128,11 +134,12 @@ nh_rby:
 			PHY							; (3) eeek
 			LDY IORA					; (4) get direct pad status
 			CPY #(PAD_ST|PAD_SEL)^$FF	; (2) just both SELECT & START?
-			BNE nb_cont					; (3/2) nope, just continue
-				JMP nb_error			; PLACEHOLDER (note stack imbalance)
+			BNE no_ab					; (3/2) nope, just continue EEEEK
+				LDX #nb_abort-nb_msg
+				BRA nb_disp			; tell the cause
 no_ab:
 			PLY				; (4) eeek
-			CPX #0			; (2)
+			CPX #0			; (2) how many bits remaining?
 			BNE nh_rby		; (3/2) wait for complete byte
 		STA nb_ptr, Y		; (5) store received byte
 		DEY					; (2) next preamble byte (note reversed order)
@@ -184,25 +191,22 @@ nb_rby:
 			LDA IORA					; (4) get direct pad status
 			CMP #(PAD_ST|PAD_SEL)^$FF	; (2) both SELECT & START?
 			BNE nb_cont					; (3/2) nope, just continue
-;				JMP nb_error
+;				BRA nb_error
 ; **********************************************************************
 ; *** if no valid magic number, make it PANIC by blinking like crazy ***
 nb_error:
+; draw some feedback
+	LDX #err_msg-nb_msg		; preset offset (generic error message)
+nb_disp:					; *** expect message offset in X
 	SEI
 	LDY #<nb_rti			; (2+2) get null clock handler
-	LDX #>nb_rti
+	LDA #>nb_rti
 	STY fw_nmi				; (3+3) redirect handler (might become simply STZ fw_nmi if aligned!)
-	STX fw_nmi+1
-; draw some feedback
-	LDX #err_msg-nb_msg			; preset offset
-	JSR sb_loop				; and print selected message
+	STA fw_nmi+1
+	JSR sb_loop				; ...and print selected message
+nb_panic:
 	JMP panic				; blink like CRAZY!
 ; **********************************************************************
-; ROM images are NOT accepted
-is_cart:
-		LDX #nb_cart-nb_msg		; message index
-		JSR sb_loop			; print it
-		BRA nb_error		; PANIC (no longer besides nb_error)
 nb_cont:
 ; add some page feedback
 			JSR progress	; generic call, should not affect Y
@@ -218,13 +222,15 @@ nb_nw:
 	LDA #>nb_rti			; (2+2) set null NMI vector, just in case
 	STY fw_nmi
 	STA fw_nmi+1			; (4+4)
-	LDA #<
+	LDY #<isr
+	LDA #>isr				; (2+2) standard ISR, just in case
 	STY fw_irq
-	STA fw_irq+1			; () all clear
+	STA fw_irq+1			; (4+4) all clear for interrupts
 	LDA #%11000000			; (2+4) enable T1
-	STA IER
-;	BNE nb_exec				; (3) try executing, no need for BRA
-; *** execute if possible *** continue
+	STA IER					; *** should I reenable interrupts (CLI) as well? *** *** ***
+	LDA #LED_EMI|SD_CS		; (2+6) all done, turn Emilio's LED _off_ (and activity, just in case)
+	TSB IORB
+; *** execute if possible ***
 nb_exec:
 	LDA nb_type				; (3) get magic byte
 	CMP #$4B				; (2) legacy nanoBoot binary?
@@ -232,12 +238,15 @@ nb_exec:
 		JMP (nb_ex)			; (6) go for it!
 not_bin:
 	CMP #$4C				; (2) Durango ROM image? *** NOPE
-		BEQ is_cart			; (2/3)
+	BNE not_cart			; (2/3)
+; ROM images are NOT accepted
+is_cart:
+		LDX #nb_cart-nb_msg		; message index
+		BRA nb_disp				; display and PANIC (no longer besides nb_error)
+not_cart:
 	CMP #$4D				; (2) generic data?
 	BNE not_data			; (3/2)
-	LDX #nb_cart-nb_msg			; (2) preset offset
-	JSR sb_loop				; and print selected message
-	JMP nb_rdy				; (3) back to receiving mode
+		JMP bl_off			; (3) data already received, back to receiving mode
 not_data:
 	CMP #$4E				; (2) Pocket executable?
 	BNE nb_bad				; (3/2) if not, bad byte *** should NEVER happen ***
@@ -248,11 +257,9 @@ not_data:
 		INY					; (2) go for MSB (offset 6)
 		LDA (nb_ex), Y		; (5) extract MSB from header
 		STA nb_ptr+1		; (3) indirect pointer is complete
-		LDA #LED_EMI|SD_CS	; (2+6) all done, turn Emilio's LED _off_ (and activity, just in case)
-		TSB IORB
 		JMP (nb_ptr)		; (6) actual execution pointer is *pointed* here
 nb_bad:
-	JMP nb_error			; PANIC
+	BRA nb_error			; PANIC
 
 ; ************************
 ; *** feedback support ***
@@ -308,8 +315,11 @@ nb_banner:
 	.asc	"nanoBoot? ", 0				; standard banner
 nb_cart:
 	.asc	" * CARTRIDGE! *", 0		; ROM images NOT accepted
+nb_abort:
+	.asc	" ### Aborted ###", 0		; BREAK combo
+
 err_msg:
-	.asc	"FAIL!", 0					; error message
+	.asc	"FAIL!", 0					; generic error message
 
 nb_code_end:
 ; *******************************************************
