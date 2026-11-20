@@ -1,6 +1,6 @@
 ; nanoBoot v2 (Zacatecas version, also Chihuahua suitable with an LCD hat)
 ; (c) 2024-2026 Carlos J. Santisteban
-; last modified 20261120-0906
+; last modified 20261120-0942
 
 ; add -DALONE for standalone version (otherwise module into boot.s, after sdboot.s/romboot.s)
 
@@ -37,8 +37,8 @@ rom_start:
 ; NEW coded version number
 	.word	$2242			; 2.2b2		%vvvvrrrrsshhbbbb, where revision = %hhrrrr, ss = %00 (alpha), %01 (beta), %10 (RC), %11 (final)
 ; date & time in MS-DOS format at byte 248 ($F8)
-	.word	$4EC0			; time, 9.54		%0100 1-110 110-0 0000
-	.word	$5D71			; date, 2026/11/17	%0101 110-1 011-1 0001
+	.word	$4D40			; time, 9.42		%0100 1-101 010-0 0000
+	.word	$5D74			; date, 2026/11/20	%0101 110-1 011-1 0100
 ; filesize in top 32 bits (@ $FC) now including header ** must be EVEN number of pages because of 512-byte sectors
 	.word	$10000-rom_start			; filesize (rom_end is actually $10000)
 	.word	0							; 64K space does not use upper 16 bits, [255]=NUL may be third magic number
@@ -73,7 +73,7 @@ nb_start:
 	BEQ continue
 		JMP panic			; otherwise this is not Chihuahua, or something is very wrong
 continue:
-	LDA #%11001110			; make CB2 low to disable sound, rest as inputs
+	LDA #%11000000			; make CB2 low to disable sound, rest as inputs (CA2 no longer high)
 	STA PCR
 	LDA #%01000000			; T1 free run (PB7 no toggle), no SR, no latch *** will be needed afterwards
 	STA ACR
@@ -103,12 +103,10 @@ continue:
 		TYA					; retrieve A
 bl_off:
 #endif
-; display ready message thru CONIO
 	LDA #LED_EMI			; keep Emilio's LED turned on
 	TRB IORB
-nb_rpt:
 ; * display nanoBoot banner *
-	LDX #nb_banner-nb_msg			; reset offset
+	LDX #nb_banner-nb_msg	; reset offset
 	JSR sb_loop				; and print selected message
 
 ; *** all inited, get ready for reception ***
@@ -129,7 +127,7 @@ nh_rby:
 ; inner loop is the best place for aborting
 			PHY							; (3) eeek
 			LDY IORA					; (4) get direct pad status
-			CPY #(PAD_ST|PAD_SEL)^$FF	; (2) both SELECT & START?
+			CPY #(PAD_ST|PAD_SEL)^$FF	; (2) just both SELECT & START?
 			BNE nb_cont					; (3/2) nope, just continue
 				JMP nb_error			; PLACEHOLDER (note stack imbalance)
 no_ab:
@@ -156,12 +154,8 @@ no_ab:
 ;	LDX nb_type
 	TXA
 	SEC
-	SBC #$4B				; (2+2+2) turn $4B...$4E into 0...3
-; display type thru CONIO
-;	CLC						; assume C is set per SBC above
-	ADC #'B'-1				; note offset via carry, will turn 0...3 into 'B'...'E'
-;	TAY						; no longer needed with BIOS call
-	JSR b_conio
+	SBC #9					; (2+2+2) turn $4B...$4E into 'B'...'E'
+	JSR b_conio				; display type (BIOS call)
 	JSR makebar				; prepare progress indicator
 	LDY nb_ptr				; (3) retrieve base offset in Y
 	STZ nb_ptr				; (3) clear offset, and we are ready!
@@ -190,7 +184,7 @@ nb_rby:
 			LDA IORA					; (4) get direct pad status
 			CMP #(PAD_ST|PAD_SEL)^$FF	; (2) both SELECT & START?
 			BNE nb_cont					; (3/2) nope, just continue
-;				JMP nb_error			; (3) PLACEHOLDER
+;				JMP nb_error
 ; **********************************************************************
 ; *** if no valid magic number, make it PANIC by blinking like crazy ***
 nb_error:
@@ -265,7 +259,7 @@ nb_bad:
 ; ************************
 ; print message from selected offset
 sb_loop:
-		LDY nb_msg, X			; get char
+		LDY nb_msg, X		; get char
 	BEQ sb_exit				; until end
 		JSR b_conio			; print it (BIOS call keeps all registers)
 		INX					; next char
@@ -282,7 +276,6 @@ sb_exit:
 ; ***********************************
 ; *** nanoBoot interrupt handlers ***
 ; ***********************************
-
 ; *** SERCLK handler ***
 nb_nmi:
 ; received bits should be LSB first!
@@ -306,10 +299,13 @@ nb_irq:
 	PHA						; restore all (A changed) (3)
 	RTI						; (6) whole routine takes only 15 clocks, plus acknowledge (total 22)
 
-; * feedback messages for CONIO *
+; ********************
+; *** data section ***
+; ********************
+; * feedback messages thru CONIO *
 nb_msg:						; base address
 nb_banner:
-	.asc	21, "nanoBoot? ", 0			; standard banner
+	.asc	"nanoBoot? ", 0				; standard banner
 nb_cart:
 	.asc	" * CARTRIDGE! *", 0		; ROM images NOT accepted
 err_msg:
