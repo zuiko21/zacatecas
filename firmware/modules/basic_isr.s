@@ -1,6 +1,6 @@
 ; Basic ISR for Chihuahua/Zacatecas plus PANIC handler
 ; (c) 2024-2026 Carlos J. Santisteban
-; last modified 20261114-1841
+; last modified 20261120-0909
 
 ; ************************
 ; *** standard IRQ ISR ***
@@ -48,6 +48,8 @@ no_brk:
 ; *** PANIC handler ***
 panic:
 .(
+	LDA #(SD_MISO^$FF)		; EEEEEEEEEEEEEEK
+	STA DDRB				; make sure of bit direction
 	LDA IORB				; LEDs control
 	ORA #LCD_BLOFF|SD_DIS|LED_OFF		; clear previous status
 panic_loop:
