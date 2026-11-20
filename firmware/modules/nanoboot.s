@@ -1,6 +1,6 @@
 ; nanoBoot v2 (Zacatecas version, also Chihuahua suitable with an LCD hat)
 ; (c) 2024-2026 Carlos J. Santisteban
-; last modified 20261120-1929
+; last modified 20261121-0013
 
 ; assemble from root dir... xa modules/nanoboot.s
 ; add -DALONE for standalone version (otherwise module into boot.s, after sdboot.s/romboot.s)
@@ -23,7 +23,7 @@ rom_start:
 	.asc	"****"			; reserved
 	.byt	13				; [7]=NEWLINE, second magic number
 ; filename
-	.asc	"nanoBoot v2.2b2"	; C-string with filename @ [8], max 220 chars
+	.asc	"nanoBoot v2.2b3"	; C-string with filename @ [8], max 220 chars
 ; note terminator below
 ; optional C-string with comment after filename, filename+comment up to 220 chars
 	.asc	"Zacatecas version", 0, 0
@@ -36,10 +36,10 @@ rom_start:
 ; NEW main commit (user field 1)
 	.asc	"$$$$$$$$"
 ; NEW coded version number
-	.word	$2242			; 2.2b2		%vvvvrrrrsshhbbbb, where revision = %hhrrrr, ss = %00 (alpha), %01 (beta), %10 (RC), %11 (final)
+	.word	$2243			; 2.2b3		%vvvvrrrrsshhbbbb, where revision = %hhrrrr, ss = %00 (alpha), %01 (beta), %10 (RC), %11 (final)
 ; date & time in MS-DOS format at byte 248 ($F8)
-	.word	$5300			; time, 10.24		%0101 0-011 000-0 0000
-	.word	$5D74			; date, 2026/11/20	%0101 110-1 011-1 0100
+	.word	$0180			; time, 00.14		%0000 0-001 100-0 0000
+	.word	$5D75			; date, 2026/11/21	%0101 110-1 011-1 0101
 ; filesize in top 32 bits (@ $FC) now including header ** must be EVEN number of pages because of 512-byte sectors
 	.word	$10000-rom_start			; filesize (rom_end is actually $10000)
 	.word	0							; 64K space does not use upper 16 bits, [255]=NUL may be third magic number
@@ -153,7 +153,9 @@ no_ab:
 	CPX #$4F				; (2) above $4E?
 		BCS nb_error		; (2/3) if so, not valid EEEEK
 	CPX #$4C				; (2) ROM images not allowed
-		BEQ is_cart			; (2/3) report accordingly
+	BNE pre_ok
+		JMP is_cart			; (2/3) report accordingly
+pre_ok:
 	LDY nb_ptr
 	LDA nb_ptr+1			; (3+3) copy start address...
 	STY nb_ex
@@ -198,7 +200,11 @@ nb_rby:
 nb_error:
 ; draw some feedback
 	LDX #err_msg-nb_msg		; preset offset (generic error message)
+	BRA ne_cont				; stay on top line
 nb_disp:					; *** expect message offset in X
+	LDA #13					; CR
+	JSR b_conio				; set cursor
+ne_cont:
 	SEI
 	LDY #<nb_rti			; (2+2) get null clock handler
 	LDA #>nb_rti
@@ -242,8 +248,8 @@ not_bin:
 	BNE not_cart			; (2/3)
 ; ROM images are NOT accepted
 is_cart:
-		LDX #nb_cart-nb_msg		; message index
-		BRA nb_disp				; display and PANIC (no longer besides nb_error)
+		LDX #nb_cart-nb_msg	; message index
+		BRA nb_disp			; display and PANIC (no longer besides nb_error)
 not_cart:
 	CMP #$4D				; (2) generic data?
 	BNE not_data			; (3/2)
@@ -267,7 +273,7 @@ nb_bad:
 ; ************************
 ; print message from selected offset
 sb_loop:
-		LDY nb_msg, X		; get char
+		LDA nb_msg, X		; get char EEEEEK
 	BEQ sb_exit				; until end
 		JSR b_conio			; print it (BIOS call keeps all registers)
 		INX					; next char
