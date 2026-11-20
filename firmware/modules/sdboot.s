@@ -2,7 +2,7 @@
 ; based on v2.1.11 with volume-into-FAT32
 ; (c) 2023-2026 Carlos J. Santisteban
 ; based on code from http://www.rjhcoding.com/avrc-sd-interface-1.php and https://en.wikipedia.org/wiki/Serial_Peripheral_Interface
-; last modified 20261119-1158
+; last modified 20261120-1824
 
 #ifndef	ZACATECAS
 #include	"zacatecas.h"
@@ -375,8 +375,6 @@ lb_wait:
 sd_msg:
 sd_splash:
 	.asc	"SD ", 0
-sd_old:
-	.asc	"1.x"			; any chance?
 sd_next:
 	.asc	12, "      ...       ", 13, " U/D (Se) [St/A]", 0	; *** CHECK
 sd_err:
@@ -390,22 +388,26 @@ sd_idle:
 	.asc	"IDLE", 0
 sd_sdif:
 	.asc	"SD I/F", 0
+sd_echo:
+	.asc	"ECHO", 0
 sd_inierr:
 	.asc	"INIT", 0
 sd_rdy:
 	.asc	"READY", 0
+sd_old:
+	.asc	"1.x"			; any chance?
 sd_hc:
-	.asc	"HC/XC"		; ### special prefix if CCS=1 ### will be indexed from sd_msg instead
+	.asc	"HC/XC"			; ### special prefix if CCS=1 ### will be indexed from sd_msg instead
 mbr_ptype:
-	.asc	"MBRpt", 0
+	.asc	"MBRptyp", 0
 mbr_bsig:
-	.asc	"MBRbs", 0
+	.asc	"MBRbsig", 0
 vbr_jump:
-	.asc	"VBRji", 0
+	.asc	"VBRjmp", 0
 bpb_media:
-	.asc	"BPB2mt", 0
+	.asc	"BPB2mtyp", 0
 bpb_extbs:
-	.asc	"BPB7ebs", 0
+	.asc	"BPB7xbs", 0
 bpb_bps:
 	.asc	"BPB2bps", 0
 sd_abort:
@@ -421,8 +423,10 @@ sdix_tab:
 	.byt	sd_ok-err_msg		; SD_OK
 	.byt	sd_idle-err_msg		; IDLE_ERR
 	.byt	sd_sdif-err_msg		; SDIF_ERR
+	.byt	sd_echo-err_msg		; ECHO_ERR eeek
 	.byt	sd_inierr-err_msg	; INIT_ERR
 	.byt	sd_rdy-err_msg		; READY_ERR
+	.byt	old_sd-err_msg		; OLD_SD eeek
 	.byt	sd_hc-err_msg		; HC_XC
 	.byt	mbr_ptype-err_msg	; MBR_PTYP
 	.byt	mbr_bsig-err_msg	; MBR_BSIG

@@ -1,7 +1,7 @@
 ; **************************************
 ; *** Zacatecas hardware definitions ***
 ; **************************************
-; Last modified 20261120-0838
+; Last modified 20261120-1926
 
 #ifndef	SPEED
 #define		SPEED	1000000
@@ -85,30 +85,14 @@ old_c	= cur_ix+ 1	; $E9
 en_ix	= old_c	+ 1	; $EA ### directory storage ### 8-bit so far
 flags	= en_ix	+ 1 ; $EB flags to enable caching (D6) and display (D7)
 
-; SD driver usage ($EC-$FB)
-crc		= $EC		; $EC
-sd_ver	= crc	+ 1	; $ED ### not so temporary ###
-mosi	= sd_ver+ 1	; $EE
-miso	= mosi	+ 1	; $EF
-arg		= miso	+ 1	; $F0-$F3
-res		= arg	+ 4	; $F4-$F8
-tmpba	= res	- 1	; actually $F4-$F5, as $F3 is not used *** HOPE IT WORKS!
-token	= res	+ 5	; $F9
-ptr		= token	+ 1	; $FA-$FB
 
 end_pg		= $3F5			; *** *** *** CHECK
 
 ; ****************************
 ; *** *** SD card BIOS *** *** CHECK
-; *** mount point  *** NEW for FAT32 support ($3F6-$3FF)
-cnt			= $3F6			; directory sector counter, unfortunately no longer in ZP $3F6
-sec_clus	= cnt+1			; number of sectors per cluster $3F7
-dir_clus	= sec_clus+1	; first cluster of directory (needed for subtract) $3F8-$3FB
-mnt_point	= dir_clus+4	; mount point (BIG endian like arg) $3FC..$3FF *** GLOBAL
-
-; *** sector buffer and header pointers ***
-tmp_siz		= $2FA			; $2FA-$2FB top 16 bits of temporary size for remaining free block (max. 16M)
-hd_cache	= tmp_siz+2		; $2FC-$2FF current header sector position (big-endian)
+; *** storage globals ***
+sd_ver		= $3FB	+ 1 	; $3FB ### not so temporary ###
+mnt_point	= sd_ver+ 1		; mount point (BIG endian like arg) $3FC..$3FF
 
 buffer		= $400			; EEEEEEK
 magic1		= buffer+0		; must contain zero

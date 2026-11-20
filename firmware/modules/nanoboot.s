@@ -1,7 +1,8 @@
 ; nanoBoot v2 (Zacatecas version, also Chihuahua suitable with an LCD hat)
 ; (c) 2024-2026 Carlos J. Santisteban
-; last modified 20261120-1024
+; last modified 20261120-1929
 
+; assemble from root dir... xa modules/nanoboot.s
 ; add -DALONE for standalone version (otherwise module into boot.s, after sdboot.s/romboot.s)
 
 #ifndef	ZACATECAS
@@ -275,11 +276,6 @@ sb_exit:
 	RTS
 .)
 
-; *** progress bar module ***
-#ifndef	PROGRESS
-#include "modules/progress.s"
-#endif
-
 ; ***********************************
 ; *** nanoBoot interrupt handlers ***
 ; ***********************************
@@ -333,6 +329,11 @@ nb_code_end:
 ; **************************
 #include	"bios.s"
 #include	"lll.s"
+; *** progress bar module ***
+#ifndef	PROGRESS
+#include "modules/progress.s"
+#endif
+
 fw_end:
 
 ; *** BIOS / LLL interface ***

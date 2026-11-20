@@ -2,7 +2,7 @@
 ; *** miniBIOS for Zacatecas *** v0.1a2
 ; ******************************
 ; (c) 2026 Carlos J. Santisteban
-; last modified 20261119-1210
+; last modified 20261120-1926
 
 #include "bios.h"
 
@@ -16,7 +16,9 @@ conio:
 	PHY						; save all registers, just in case *** check
 ; should check if in DLE mode *** TO DO
 	TAY						; check parameter
-	BEQ c_in				; input if zero
+		BNE c_out
+	JMP c_in				; input if zero
+c_out:
 		CPY #12				; is it FF?
 		BNE no_ff
 			LDA #1			; CLEAR DISPLAY
@@ -24,7 +26,7 @@ conio:
 			STZ fw_ciop		; reset cursor position
 			LDY #2
 			JSR delay_ms	; wait for a couple mS (at least 1.52) *** actually inside LLL
-			BRA cio_exit
+			JMP cio_exit
 no_ff:
 		CPY #13				; is it CR?
 		BNE no_cr
@@ -372,22 +374,19 @@ is_idle:
 	CMP #1					; check valid response
 	BEQ sdic_ok
 ; ### if error, might be 1.x card, notify and skip to CMD58 or ACMD41 ###
-		LDX #OLD_SD			; ### message for older cards ###
-		STX sd_ver			; ### store as flag ###
-		JSR disp_code
+		LDY #OLD_SD			; ### message for older cards ###
+		STY sd_ver			; ### store as flag ###
 		BRA not_cmd8
-sdptec:
 		LDY #SDIF_ERR
+sdptec:
 		JMP sd_fail			; if(res[0] != 0x01) return SD_ERROR;
 sdic_ok:
 ; no lateral effects here!
 ; check pattern echo
-	LDX #ECHO_ERR			; *** ERROR 2 in red ***
+	LDY #ECHO_ERR			; *** ERROR 2 in red ***
 	LDA res+4
 	CMP #$AA
 		BNE sdptec			; if(res[4] != 0xAA) return SD_ERROR;
-	LDA #'.'				; step 2 (ECHO) passed
-	JSR l_ldat				; direct dot print
 ; ### jump here for 1.x cards ###
 not_cmd8:
 ; attempt to initialize card *** could add CMD58 for voltage check
@@ -430,10 +429,11 @@ sa_err:
 		LDA res				; return res1; (needed here in case of error)
 	BEQ apc_rdy				; while(res[0] != SD_READY);
 ; wait 10 ms
-		LDA #12
+		LDY #0				; eeek
+		LDA #8				; about 10 mS at 1 MHz *** change if overclocked
 d10m:
-				INY
-				BNE d10m
+				INY			; (2+3)
+				BNE d10m	; (total 1279 µs at 1 MHz)
 			DEC
 			BNE d10m		; delayMicroseconds(10000);
 		DEX					; cmdAttempts++;
@@ -729,6 +729,22 @@ sd_fail:
 
 ; ************************
 ; *** support routines ***
+; ************************
+; *** *** high level minimOS volume basic support *** ***
+; * look for a valid header * assume sector loaded at buffer
+chk_head:
+	LDA magic1				; check magic number one
+	BNE not_magic 
+		LDA magic2			; check magic number two
+		CMP #13				; must be NEWL instead of zero
+	BNE not_magic
+		LDA magic3			; check magic number three
+	BNE not_magic
+		CLC					; report no error, header is valid
+		RTS
+not_magic:
+	SEC						; otherwise header is not valid
+	RTS
 
 ; *** *** standard SD card support *** ***
 ; *** send command in A to card *** arg.l, crc.b
@@ -758,19 +774,19 @@ ba_cmd:
 ; precompute byte-addressed sector
 	LDA arg+3
 	ASL
-	STA tmpba+2				; only two bytes actually used (+1...+2)
+	STA tmpba+1
 	LDA arg+2
 	ROL
-	STA tmpba+1
+	STA tmpba
 	LDA arg+1
 	ROL
-;	STA tmpba
+;	STA tmpba-1
 ; send argument
-;	LDA tmpba
+;	LDA tmpba-1
+	JSR spi_tr
+	LDA tmpba
 	JSR spi_tr
 	LDA tmpba+1
-	JSR spi_tr
-	LDA tmpba+2
 	JSR spi_tr
 	LDA #0					; always zero as 512 bytes/sector
 	JSR spi_tr
