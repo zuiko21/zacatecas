@@ -1,18 +1,20 @@
 ; **************************************
 ; *** Zacatecas hardware definitions ***
 ; **************************************
-; Last modified 20261119-1812
+; Last modified 20261120-0838
 
 #ifndef	SPEED
 #define		SPEED	1000000
 #endif
 
-	VIA		= $BFF0			; EEEEEEEEEEEEEEEEEEEEEEEEEEK
+#define		VIA		$BFF0
+
 	t1ct	= (SPEED/250)-2	; 250 Hz interrupt at 1 MHz (or whatever) clock rate
 
 ; LCD at PB4...PB5, BL is active LOW
 #define		LCD_BLON	%11011111
 #define		LCD_BLOFF	%00100000
+#define		LCD_LIGHT	%00100000
 #define		LCD_EN		%00010000
 #define		LCD_DIS		%11101111
 
@@ -23,6 +25,7 @@
 ; SD interface at PB0...PB3, CS is active LOW
 #define		SD_EN		%11110111
 #define		SD_DIS		%00001000
+#define		SD_CS		%00001000
 #define		SD_MISO		%00000100
 #define		SD_MOSI		%00000010
 #define		SD_CLK		%00000001
@@ -30,6 +33,7 @@
 ; Emilio's LED at PB6, active LOW
 #define		LED_ON		%10111111
 #define		LED_OFF		%01000000
+#define		LED_EMI		%01000000
 
 ; key pad at PA0...PA7, all active LOW
 #define		PAD_RT		%00000001
