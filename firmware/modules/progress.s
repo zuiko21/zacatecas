@@ -1,6 +1,6 @@
 ; Zacatecas progress indicator v1.0b1
 ; (c) 2026 Carlos J. Santisteban
-; last modified 20261112-1946
+; last modified 20261121-1754
 
 #ifndef	PROGRESS
 #define		PROGRESS	_PROGRESS
@@ -23,10 +23,9 @@ no_und:
 		CLC
 		ADC #8				; 2K = 8 pages
 		TAY					; update index
+	BMi bar_exit			; outside RAM? we're done
 		CPY end_pg			; are we over the top?
 	BCC mb_loop
-		CPY #128			; outside RAM area?
-	BEQ bar_exit			; we're done
 		LDA #' '			; otherwise keep printing trailing spaces
 		BRA no_und
 bar_exit:
