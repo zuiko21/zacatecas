@@ -1,7 +1,7 @@
 ; *****************************
 ; *** Zacatecas definitions ***
 ; *****************************
-; Last modified 20261124-0824
+; Last modified 20261125-0941
 
 ; *** *** ******************** *** ***
 ; *** *** hardware definitions *** ***
@@ -113,6 +113,21 @@
 ; *** *** ****************** *** ***
 ; *** *** software interface *** ***
 ; *** *** ****************** *** ***
+
+; *** BIOS/LLL entry points ***
+#define	b_conio		$FF00
+#define	b_pad		$FF03
+#define	b_sdev		$FF06
+#define	b_rblk		$FF09
+#define	b_wblk		$FF0C
+#define	b_dini		$FF0F
+
+#define	l_pad		$FFB4
+#define	l_lrst		$FFB7
+#define	l_lcmd		$FFBA
+#define	l_ldat		$FFBD
+
+; *** BSOS entry points TBD *** TBD *** TBD ***
 
 ; *** zeropage usage *** FOR PARAMETERS ONLY, local variables go into their respective .h files
 
