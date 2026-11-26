@@ -1,7 +1,7 @@
 ; *****************************
 ; *** Zacatecas definitions ***
 ; *****************************
-; Last modified 20261126-0940
+; Last modified 20261126-1101
 
 ; *** *** ******************** *** ***
 ; *** *** hardware definitions *** ***
@@ -134,7 +134,7 @@
 #define	ptr			$FA
 ; SD card sector number ($F6-F9)
 #define	arg			$F6
-; parameter for makebar
+; temporary parameter for makebar
 #define	end_pg		$F9
 
 ; CHECK *** CHECK *** CHECK *** CHECK *** CHECK *** CHECK *** CHECK *** CHECK *** CHECK *** CHECK *** CHECK *** CHECK ***
