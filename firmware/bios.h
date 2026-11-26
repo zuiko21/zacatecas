@@ -1,6 +1,6 @@
 ; definitions for Zacatecas BIOS
 ; (c) 2026 Carlos J. Santisteban
-; last modified 20261126-0944
+; last modified 20261126-1101
 
 ; ************************************
 ; *** *** SD STORAGE FUNCTIONS *** ***
@@ -51,8 +51,8 @@
 ; *** memory usage *** CHECK
 cnt			= $E7			; directory sector counter
 tmpba		= cnt			; $E7-$E8, generic use
-sec_clus	= cnt		+ 1	; number of sectors per cluster $E8
-dir_clus	= sec_clus	+ 1	; first cluster of directory (needed for subtract) $E9-$EC
+dir_clus	= cnt		+ 1	; first cluster of directory (needed for subtract) $E8-$EB
+sec_clus	= cnt		+ 1	; number of sectors per cluster $EC
 token		= dir_clus	+ 4	; $ED
 mosi		= token		+ 1	; $EE convenient
 miso		= mosi		+ 1	; $EF convenient
