@@ -1,7 +1,7 @@
 ; *****************************
 ; *** Zacatecas definitions ***
 ; *****************************
-; Last modified 20261125-0941
+; Last modified 20261126-0940
 
 ; *** *** ******************** *** ***
 ; *** *** hardware definitions *** ***
@@ -87,7 +87,7 @@
 ; *** storage globals *** CHECK * CHECK * CHECK
 #define	sd_ver		$03FB
 ; mount point (BIG endian like arg) $3FC..$3FF
-#define	mnt_point	$3FC
+#define	mnt_point	$03FC
 
 ; * sector buffer and offsets *
 ; could create a second buffer by adding +$0200
@@ -130,6 +130,12 @@
 ; *** BSOS entry points TBD *** TBD *** TBD ***
 
 ; *** zeropage usage *** FOR PARAMETERS ONLY, local variables go into their respective .h files
+; SD card buffer pointer ($FA-$FB)
+#define	ptr			$FA
+; SD card sector number ($F6-F9)
+#define	arg			$F6
+; parameter for makebar
+#define	end_pg		$F9
 
 ; CHECK *** CHECK *** CHECK *** CHECK *** CHECK *** CHECK *** CHECK *** CHECK *** CHECK *** CHECK *** CHECK *** CHECK ***
 ; CHECK *** CHECK *** CHECK *** CHECK *** CHECK *** CHECK *** CHECK *** CHECK *** CHECK *** CHECK *** CHECK *** CHECK ***
@@ -138,11 +144,4 @@
 cio_src	= $E4
 cio_pt	= cio_src+2	; $E6-$E7
 
-; SD loader usage ($E8-$EB)
-cur_ix	= $E8		; $E8 ### directory position ### new, 8-bit so far
-old_c	= cur_ix+ 1	; $E9
-en_ix	= old_c	+ 1	; $EA ### directory storage ### 8-bit so far
-flags	= en_ix	+ 1 ; $EB flags to enable caching (D6) and display (D7)
-
-end_pg		= $3F5			; *** *** *** CHECK
 
