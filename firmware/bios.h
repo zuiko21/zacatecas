@@ -1,6 +1,6 @@
 ; definitions for Zacatecas BIOS
 ; (c) 2026 Carlos J. Santisteban
-; last modified 20261120-1926
+; last modified 20261126-0944
 
 ; ************************************
 ; *** *** SD STORAGE FUNCTIONS *** ***
@@ -56,7 +56,7 @@ dir_clus	= sec_clus	+ 1	; first cluster of directory (needed for subtract) $E9-$
 token		= dir_clus	+ 4	; $ED
 mosi		= token		+ 1	; $EE convenient
 miso		= mosi		+ 1	; $EF convenient
-arg			= miso		+ 1	; $F0-$F3
+;arg		= miso		+ 1	; $F0-$F3
 res			= arg		+ 4	; $F4-$F8
 crc			= res		+ 5	; $F9
-ptr			= crc		+ 1	; $FA-$FB needed
+;ptr		= crc		+ 1	; $FA-$FB needed
