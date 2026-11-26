@@ -2,32 +2,19 @@
 ; based on v2.1.11 with volume-into-FAT32
 ; (c) 2023-2026 Carlos J. Santisteban
 ; based on code from http://www.rjhcoding.com/avrc-sd-interface-1.php and https://en.wikipedia.org/wiki/Serial_Peripheral_Interface
-; last modified 20261120-1824
+; last modified 20261126-0949
 
 #ifndef	ZACATECAS
 #include	"zacatecas.h"
 #endif
-
-; flags for convenience, note they're fixed b/c of the BIT instruction
-#define	CACH_EN		%01000000
-#define	DISP_EN		%10000000
-
-; offsets for (non-fatal) messages
-#define	SDSPLASH	sd_splash-sd_msg
-#define	
-
-; *****************
-; *** RAM usage ***
-; *****************
-; *** directory storage ***
-en_tab		= $800			; now taking all available RAM, will need indirect-indexed (32-byte entries)
--end_pg		= $300			; originally at buffer+255, no longer the ugly hack... *** CHECK
 
 ; **************************
 ; *** SD-card bootloader ***
 ; **************************
 sd_main:
 .(
+#include	"modules/sdboot.h"
+
 	LDX #SDSPLASH
 	JSR disp_code			; display splash screen while mounting SD
 ; SD device driver is fixed, proceed to check for SD card as usual
@@ -71,7 +58,7 @@ header_ok:
 		BNE next_file
 chk_exec:
 			LDA bootsig+1
-;			ORA #2			; OPTIONAL *** this will allow Durango executables as well (pX/pZ)
+			ORA #2			; *** OPTIONAL *** this will allow Durango executables as well (pX/pZ)
 			CMP #'Z'
 		BNE next_file		; ignore generic files or Durango executables
 ; * executable detected, register sector and store filename *
