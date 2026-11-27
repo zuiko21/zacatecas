@@ -1,22 +1,21 @@
 ; Modular firmware for Zacatecas SBC
 ; (c) 2026 Carlos J. Santisteban
-; last modified 20261120-0832
+; last modified 20261127-0833
 
-; add -DDEFAULT=path-to-default-Pocket
-; add -DALONE for DEVELOPMENT only (requires external nanoBoot in ROM)
+; add -DDEFAULT="path-to-default-Pocket-executable"
+; add -DALONE for DEVELOPMENT only (requires external nanoBoot in ROM) perhaps with -DLOADADDR=$xxxx as required
 
 ; standard definitions
-#ifndef	ZACATECAS
 #include	"zacatecas.h"
-#endif
 
-#ifndef	STDNMI
-#define		STDNMI	panic
-#endif
+; not much sense to set macro in CLI, but change as required if a proper debugger is to be installed
+#define	STDNMI	panic
 
 ; *** linked bootloader ROM ***
 #ifdef	ALONE
-#define	LOADADDR	$7000
+#ifndef	LOADADDR
+#define		LOADADDR	$7000
+#endif
 	*		= LOADADDR		; 4K should suffice, and allow space in lower RAM
 #else
 	*		= $C000			; standard 16K ROM
@@ -43,7 +42,7 @@ rom_start:
 #endif
 	.byt	13				; [7]=NEWLINE, second magic number
 ; filename
-	.asc	"Zacatecas boot firmware 0.2a3", 0	; C-string with filename @ [8], max 220 chars
+	.asc	"Zacatecas boot firmware 0.2a4", 0	; C-string with filename @ [8], max 220 chars
 ;	.asc	"(comment)"		; optional C-string with comment after filename, filename+comment up to 220 chars
 	.byt	0				; second terminator for optional comment, just in case
 
@@ -55,11 +54,11 @@ rom_start:
 ; NEW main commit (user field 1)
 	.asc	"$$$$$$$$"
 ; NEW coded version number
-	.word	$0203			; 0.2a3		%vvvvrrrrsshhbbbb, where revision = %hhbbbb, ss = %00 (alpha), %01 (beta), %10 (RC), %11 (final)
+	.word	$0204			; 0.2a4		%vvvvrrrrsshhbbbb, where revision = %hhbbbb, ss = %00 (alpha), %01 (beta), %10 (RC), %11 (final)
 
 ; date & time in MS-DOS format at byte 248 ($F8)
 	.word	$4400			; time, 08.32		0100 0-100 000-0 0000
-	.word	$5D74			; date, 2026/11/20	0101 110-1 011-1 0100
+	.word	$5D7B			; date, 2026/11/27	0101 110-1 011-1 1011
 ; filesize in top 32 bits (@ $FC) now including header ** must be EVEN number of pages because of 512-byte sectors
 	.word	file_end-rom_start			; filesize (rom_end is actually $10000, otherwise use Pocket size)
 	.word	0							; 64K space does not use upper 16 bits, [255]=NUL may be third magic number
@@ -90,7 +89,7 @@ continue:
 	STA PCR
 	LDA #%01000000			; T1 free run (PB7 no toggle), no SR, no latch
 	STA ACR
-	LDX #>t1ct				; T1 interrupt speed
+	LDX #>t1ct				; T1 interrupt speed for 250 Hz (as defined in zacatecas.h)
 	LDY #<t1ct
 	STY T1CL
 	STX T1CH				; start counting!
@@ -110,9 +109,9 @@ continue:
 ; Startup message
 	JSR l_lrst				; init screen (LLL call)
 	LDY #<splash
-	LDX #>splash			; pointer at za1h ($FA)
-	STY $FA
-	STX $FB					; *** TBD replace address with label
+	LDX #>splash			; pointer to splash screen
+	STY ptr
+	STX ptr+1				; standard parameter
 	JSR print
 	JSR bong				; make startup sound
 
@@ -120,7 +119,7 @@ continue:
 ; *** boot key combos ***
 ; ***********************
 ; enable LCD backlight... if desired
-	LDA gamepad				; check keys
+	LDA gamepad				; check keys -- assume interrupts running
 	BIT #PAD_LT				; press LEFT to turn Backlight OFF
 	BNE bl_off
 		TAY					; preserve gamepad status, saving 1 byte
@@ -154,12 +153,12 @@ go_nanoboot:
 ; ***********************
 
 ; *** print string ***
-; ($FA) points to C-string, second half of zpar
+; standard ptr parameter points to C-string
 print:
 .(
 	LDY #0
 pr_loop:
-		LDA ($FA), Y
+		LDA (ptr), Y
 	BEQ pr_exit
 		JSR b_conio			; must call proper vectored CONIO
 		INY
@@ -167,11 +166,10 @@ pr_loop:
 pr_exit:
 	RTS
 .)
+
 ; *** bong sound ***
 bong:
 .(
-;	PHP
-;	SEI						; just in case
 	LDY #<(t1ct/8)
 	LDA #>(t1ct/8)			; *** placeholder 1 kHz
 	STY T1CL
@@ -203,9 +201,9 @@ bloop:
 	LDY #<t1ct
 	STY T1CL
 	STX T1CH				; (re)start counting!
-;	PLP						; restore interrupts if needed
 	RTS
 .)
+
 ; ******************************************
 ; *** standard Interrupt Service Routine ***
 ; ******************************************
@@ -316,11 +314,12 @@ panic_loop:
 		EOR #%11101000		; toggle all relevant bits
 		JMP panic_repeat	; forever
 .)
+
 ; ********************
 ; *** DATA section ***
 ; ********************
 splash:
-	.asc	"Zacatecas 0.2a2", 13, 0
+	.asc	"Zacatecas 0.2a4", 13, 0
 
 ; **********************
 ; *** BIOS functions ***
