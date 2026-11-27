@@ -2,7 +2,7 @@
 ; *** miniBIOS for Zacatecas *** v0.1a3
 ; ******************************
 ; (c) 2026 Carlos J. Santisteban
-; last modified 20261127-0907
+; last modified 20261127-1045
 
 #include "bios.h"
 
@@ -377,15 +377,15 @@ is_idle:
 	JSR rd_r7				; SD_readRes7(res);
 	JSR cs_disable			; deassert chip select
 
-	STZ sd_ver				; ### default (0) is modern SD card ###
+	STZ sd_ver				; ### default (0) is modern SD/HC card ###
 	LDA res
+	LDY #SDIF_ERR			; *** *** *** this was UNREACHABLE *** *** *** EEEK
 	CMP #1					; check valid response
 	BEQ sdic_ok
 ; ### if error, might be 1.x card, notify and skip to CMD58 or ACMD41 ###
-		LDY #OLD_SD			; ### message for older cards ###
-		STY sd_ver			; ### store as flag ###
-		BRA not_cmd8
-		LDY #SDIF_ERR
+		LDX #%11000000		; set D6, ideal for BIT instruction *** AND D7, as ALL 1.x will be SDSC
+		STX sd_ver			; ### store as flag ###
+	BRA not_cmd8
 sdptec:
 		JMP sd_fail			; if(res[0] != 0x01) return SD_ERROR;
 sdic_ok:
@@ -495,8 +495,7 @@ sd_sc:
 ; should I check errors?
 		JSR rd_r1
 		JSR cs_disable		; deassert chip select ###
-		LDA #'.'			; step 4 (CARD OK) passed
-		JSR l_ldat			; direct dot print
+; no side effects!
 		BRA card_ok
 hcxc:
 ;	LDX #HC_XC				; ### notify this instead ### NOPE!
