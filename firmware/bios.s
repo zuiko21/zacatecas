@@ -1,8 +1,8 @@
 ; ******************************
-; *** miniBIOS for Zacatecas *** v0.1a2
+; *** miniBIOS for Zacatecas *** v0.1a3
 ; ******************************
 ; (c) 2026 Carlos J. Santisteban
-; last modified 20261120-1926
+; last modified 20261127-0907
 
 #include "bios.h"
 
@@ -71,6 +71,10 @@ no_home:
 			LDA #>(t1ct/8)	; will sound at 1 kHz
 			STY T1CL
 			STA T1CH		; set T1 speed
+			LDA IER
+			PHA				; keep older status
+			LDA #%1100000	; make sure T1 interrupt is enabled!
+			STA IER
 			CLI				; interrupts MUST be on!
 			LDA #%11100000	; this will set CB2 high (enable sound)
 			TSB PCR
@@ -91,7 +95,11 @@ bel_wait:
 			LDY #<t1ct
 			STY T1CL
 			STX T1CH		; (re)start counting!
-			PLP				; restore previous interrupt status
+			LDA #$7F
+			STA IER			; disable all first...
+			PLA
+			STA IER			; ...then restore previous interrupts
+			PLP				; restore previous mask status
 			BRA cio_exit
 no_bell:
 ; placeholder for a much better CONIO *** TO DO
