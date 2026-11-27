@@ -1,6 +1,6 @@
 ; definitions for Zacatecas BIOS
 ; (c) 2026 Carlos J. Santisteban
-; last modified 20261126-1101
+; last modified 20261127-1033
 
 ; ************************************
 ; *** *** SD STORAGE FUNCTIONS *** ***
@@ -58,5 +58,7 @@ mosi		= token		+ 1	; $EE convenient
 miso		= mosi		+ 1	; $EF convenient
 res			= miso		+ 1	; $F0-$F4
 crc			= res		+ 5	; $F5
-;arg		= crc		+ 1	; $F6-$F9
-;ptr		= arg		+ 4	; $FA-$FB needed
+
+; *** parameters already defined in zacatecas.h ***
+;arg	$F6-$F9
+;ptr	$FA-$FB must reside in ZP
