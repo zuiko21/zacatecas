@@ -2,7 +2,7 @@
 ; based on v2.1.11 with volume-into-FAT32
 ; (c) 2023-2026 Carlos J. Santisteban
 ; based on code from http://www.rjhcoding.com/avrc-sd-interface-1.php and https://en.wikipedia.org/wiki/Serial_Peripheral_Interface
-; last modified 20261126-0949
+; last modified 20261127-0909
 
 #ifndef	ZACATECAS
 #include	"zacatecas.h"
@@ -15,7 +15,7 @@ sd_main:
 .(
 #include	"modules/sdboot.h"
 
-	LDX #SDSPLASH
+	LDX #sd_splash-sd_msg
 	JSR disp_code			; display splash screen while mounting SD
 ; SD device driver is fixed, proceed to check for SD card as usual
 sd_selected:
