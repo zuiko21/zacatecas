@@ -1,15 +1,10 @@
 ; sdboot.s definitions file
 ; (c) 2026 Carlos J. Santisteban
-; last modified 20261126-0956
+; last modified 20261127-0909
 
 ; flags for convenience, note they're fixed b/c of the BIT instruction
 #define	CACH_EN		%01000000
 #define	DISP_EN		%10000000
-
-; offsets for (non-fatal) messages
-#define	SDSPLASH	sd_splash-sd_msg
-#define	
-; TBD *** TBD *** TBD *** TBD
 
 ; *****************
 ; *** RAM usage ***
