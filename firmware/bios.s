@@ -2,7 +2,7 @@
 ; *** miniBIOS for Zacatecas *** v0.1a3
 ; ******************************
 ; (c) 2026 Carlos J. Santisteban
-; last modified 20261127-1045
+; last modified 20261127-1215
 
 #include "bios.h"
 
@@ -330,8 +330,8 @@ sd80c:
 		LDA #$FF
 		JSR spi_tr			; SPI_transfer(0xFF);
 		DEX
-		BNE sd80c			; this sends 80 clocks to synchronise
-	JSR cs_disable
+		BNE sd80c			; this sends 72 clock pulses...
+	JSR cs_disable			; ...plus another 8 pulses to synchronise
 ; command card to idle
 	LDX #10
 set_idle:
@@ -349,7 +349,6 @@ set_idle:
 ; read response
 		JSR rd_r1			; u_int8_t res1 = SD_readRes1();
 		JSR cs_disable		; deassert chip select
-
 ; continue set_idle loop
 		LDA res
 		CMP #1
@@ -376,7 +375,6 @@ is_idle:
 ; read response
 	JSR rd_r7				; SD_readRes7(res);
 	JSR cs_disable			; deassert chip select
-
 	STZ sd_ver				; ### default (0) is modern SD/HC card ###
 	LDA res
 	LDY #SDIF_ERR			; *** *** *** this was UNREACHABLE *** *** *** EEEK
@@ -415,8 +413,7 @@ sd_ia:
 		JSR rd_r1			; u_int8_t res1 = SD_readRes1();
 		JSR cs_disable		; deassert chip select
 		LDA res				; return res1;
-
-; if no error in response
+; if no error in response...
 		CMP #2
 		BCS sa_err			; if(res[0] < 2)	eeeeeeeeek
 ; ** res[0] = SD_sendOpCond() inlined here **
@@ -441,7 +438,7 @@ sa_err:
 		LDA #8				; about 10 mS at 1 MHz *** change if overclocked
 d10m:
 				INY			; (2+3)
-				BNE d10m	; (total 1279 µs at 1 MHz)
+				BNE d10m	; total 1279 µs at 1 MHz
 			DEC
 			BNE d10m		; delayMicroseconds(10000);
 		DEX					; cmdAttempts++;
@@ -467,7 +464,6 @@ apc_rdy:
 ; read response
 	JSR rd_r7				; SD_readRes7(res); actually R3
 	JSR cs_disable			; deassert chip select
-
 ; check whether card is ready
 	LDY #READY_ERR
 	BIT res+1				; eeeeeeeeek ### will check CCS as well ###
@@ -496,10 +492,9 @@ sd_sc:
 		JSR rd_r1
 		JSR cs_disable		; deassert chip select ###
 ; no side effects!
-		BRA card_ok
+;		BRA card_ok
 hcxc:
-;	LDX #HC_XC				; ### notify this instead ### NOPE!
-;	JSR disp_code			; maybe store type somewhere? *** *** ***
+; no side effects either -- in any case, zero means the usual SDHC/XC
 card_ok:
 ;	JMP vol_find			; find and mount volume * NEW
 ; ******************************************************
@@ -524,7 +519,7 @@ try_fat:
 		BEQ mbr_ptype_ok
 			CMP #$0B		; or FAT32CHS?
 		BEQ mbr_ptype_ok
-;			LDY #MBR_PTYP
+;			LDY #MBR_PTYP	; no side effects, alas
 			BRA vbr_chk		; try with VBR as this is non-fatal
 mbr_ptype_ok:
 		LDA #$55
